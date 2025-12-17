@@ -2,12 +2,15 @@ class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
 
-    this.score = 0;
+    this.readyCount = 0;
     this.carrying = null;
     this.lastInteractAt = 0;
 
     this.touch = { left: false, right: false, up: false, down: false };
     this.prevElevY = 0;
+
+    this.startTimeMs = 0;
+    this.finished = false;
   }
 
   create() {
@@ -17,18 +20,15 @@ class Stage1 extends Phaser.Scene {
     this.FLOORS_Y = [110, 220, 330, 440, 550];
     this.THICK = 20;
 
-    // Nolikšanas “snap” režģis + pret uzkraušanu vienā punktā
+    // Drop “snap” režģis + pret uzkraušanu vienā punktā
     this.DROP_GRID = 26;
     this.DROP_MIN_DIST = 20;
     this.DROP_SEARCH_STEPS = 14;
 
     this.cameras.main.setBackgroundColor("#0b0f14");
-
-    // Fizika
     this.physics.world.gravity.y = 900;
 
     // ======= DEPTH (slāņi) =======
-    // Jo lielāks depth, jo vairāk pa virsu.
     this.DEPTH = {
       markers: 1,
       platforms: 10,
@@ -38,24 +38,58 @@ class Stage1 extends Phaser.Scene {
       player: 100,
       carry: 110,
       ui: 200,
-      touch: 220
+      touch: 220,
+      overlay: 400
     };
 
-    // Platformas (statiski stāvi)
+    // ===== LIFTS =====
+    // (šaurāks lifts, kā jau iepriekš)
+    this.elevatorWidth = 80;
+    this.elevatorX = 650;
+
+    // Šahtas caurums grīdās: mazliet platāks par liftu, lai nav “ķeršanās”
+    this.shaftGapW = this.elevatorWidth + 30;
+
+    // Lifts brauc no 1.stāva (zemākā) līdz mazliet virs 5.stāva
+    const topOvershoot = 30;
+    this.elevatorMinSurfaceY = this.FLOORS_Y[0] - topOvershoot;
+
+    // Apakšā: NEKĀDA pagraba. Tieši līdz 1.stāva virsmai.
+    this.elevatorMaxSurfaceY = this.FLOORS_Y[4];
+
+    this.elevatorSpeed = 60;
+    this.elevatorDir = -1;
+
+    // ===== Platformas (statiski stāvi) =====
     this.platforms = this.physics.add.staticGroup();
 
-    // 1. stāvs (apakšā) pilnā platumā
+    // 1. stāvs pilnā platumā (bez cauruma, lai nekrīt zem grīdas)
     this.addPlatform(0, this.FLOORS_Y[4], W, this.THICK);
 
-    // 2–5 stāvs (labā puse kā shēmā)
+    // 2–5 stāvs labajā pusē, bet ar ŠAHTAS CAURUMU
     const rightStartX = 520;
-    const rightWidth = 640;
+    const rightEndX = W; // lai neiet ārā no ekrāna
+    const holeL = this.elevatorX - this.shaftGapW / 2;
+    const holeR = this.elevatorX + this.shaftGapW / 2;
+
     for (let i = 0; i < 4; i++) {
-      this.addPlatform(rightStartX, this.FLOORS_Y[i], rightWidth, this.THICK);
+      const y = this.FLOORS_Y[i];
+
+      // Kreisais segments (labās puses platformas kreisā daļa līdz caurumam)
+      const seg1L = rightStartX;
+      const seg1R = Math.min(holeL, rightEndX);
+
+      // Labais segments (no cauruma līdz platformas beigām)
+      const seg2L = Math.max(holeR, rightStartX);
+      const seg2R = rightEndX;
+
+      if (seg1R - seg1L > 18) this.addPlatform(seg1L, y, seg1R - seg1L, this.THICK);
+      if (seg2R - seg2L > 18) this.addPlatform(seg2L, y, seg2R - seg2L, this.THICK);
     }
 
-    // Buss (vizuāli + zona)
+    // ===== Buss (vizuāli + zona) =====
     this.BUS = { x: 70, y: 455, w: 220, h: 155 };
+
     const busRect = this.add.rectangle(
       this.BUS.x + this.BUS.w / 2,
       this.BUS.y + this.BUS.h / 2,
@@ -74,40 +108,24 @@ class Stage1 extends Phaser.Scene {
 
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
 
-    // ===== LIFTS KĀ ŠAURA PLATFORMa =====
-    const elevatorWidth = 80;     // 3× šaurāks
-    const elevatorX = 650;
-
-    // Augšā paceļas VIRs 5. stāva, lai var paspēt nolekt
-    const topOvershoot = 30; // px virs 5.stāva
-    this.elevatorMinSurfaceY = this.FLOORS_Y[0] - topOvershoot;
-
-    // Apakšā tikai minimāli “pagrabā”, lai var uzskriet, bet nevar iegrimt zem grīdas
-    const basementOffset = 8; // px zem 1.stāva virsmas (ļoti maz)
-    this.elevatorMaxSurfaceY = this.FLOORS_Y[4] + basementOffset;
-
-    this.elevatorSpeed = 60;
-    this.elevatorDir = -1;
-
-    const startCenterY = (this.elevatorMaxSurfaceY + this.THICK / 2);
+    // ===== Lifts (kustīga platforma) =====
+    const startCenterY = this.elevatorMaxSurfaceY + this.THICK / 2;
 
     this.elevator = this.add.rectangle(
-      elevatorX,
+      this.elevatorX,
       startCenterY,
-      elevatorWidth,
+      this.elevatorWidth,
       this.THICK,
       0x555555
     ).setStrokeStyle(2, 0x1a1f26);
-
     this.elevator.setDepth(this.DEPTH.elevator);
 
     this.physics.add.existing(this.elevator);
     this.elevator.body.setAllowGravity(false);
     this.elevator.body.setImmovable(true);
-
     this.prevElevY = this.elevator.y;
 
-    // Spēlētājs
+    // ===== Spēlētājs (vienmēr priekšā) =====
     this.player = this.makePlayer(140, this.FLOORS_Y[4]);
     this.player.setDepth(this.DEPTH.player);
 
@@ -120,11 +138,10 @@ class Stage1 extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.elevator);
 
-    // Ugunsdzēšamie aparāti + vietu marķieri
+    // ===== Ugunsdzēšamie aparāti + sloti =====
     this.extinguishers = this.physics.add.group();
     this.slots = [];
 
-    // Spot definīcijas (viegli mainīt)
     const SPOTS = [
       { floor: 1, x: 820 }, { floor: 1, x: 980 },
       { floor: 2, x: 760 }, { floor: 2, x: 940 },
@@ -140,7 +157,7 @@ class Stage1 extends Phaser.Scene {
       const surfaceY = this.FLOORS_Y[s.floor];
       const y = surfaceY - EXT_FOOT_OFFSET;
 
-      // Markeris fona slānī (BACKWARD)
+      // Markeri fonā (zem visa)
       const mark = this.add.rectangle(s.x, y, 46, 46, 0xa90f0f)
         .setStrokeStyle(3, 0xff6b6b)
         .setAlpha(0.50)
@@ -150,14 +167,14 @@ class Stage1 extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(this.DEPTH.markers + 1);
 
-      this.slots.push({ x: s.x, y, used: false, mark, icon });
+      const slot = { x: s.x, y, used: false, mark, icon };
+      this.slots.push(slot);
 
-      // Aparāts sākumā NOK
       const ex = this.makeExtinguisher(s.x, y, "NOK");
       ex.setDepth(this.DEPTH.ext);
       ex.setData("state", "NOK");
-      ex.setData("placed", false);
       ex.setData("held", false);
+      ex.setData("slotRef", null); // ja nolikts pareizajā vietā, šeit glabā slotu
 
       this.extinguishers.add(ex);
     });
@@ -165,14 +182,24 @@ class Stage1 extends Phaser.Scene {
     this.physics.add.collider(this.extinguishers, this.platforms);
     this.physics.add.collider(this.extinguishers, this.elevator);
 
+    this.totalCount = this.slots.length; // 10
+
     // Kontroles
     this.cursors = this.input.keyboard.createCursorKeys();
     this.createTouchControls();
 
-    // UI
-    this.scoreText = this.add.text(14, 12, "Punkti: 0", this.uiStyle()).setDepth(this.DEPTH.ui);
-    this.hintText = this.add.text(14, 48, "← → kustība | ↑ paņemt | ↓ nolikt (telefonā ir pogas)", this.uiStyle())
+    // UI: Gatavs X/10 + Taimeris
+    this.readyText = this.add.text(14, 12, `Gatavs: 0/${this.totalCount}`, this.uiStyle())
       .setDepth(this.DEPTH.ui);
+
+    this.timeText = this.add.text(14, 48, "Laiks: 00:00", this.uiStyle())
+      .setDepth(this.DEPTH.ui);
+
+    this.hintText = this.add.text(14, 84, "← → kustība | ↑ paņemt | ↓ nolikt", this.uiStyle())
+      .setDepth(this.DEPTH.ui);
+
+    // Start time
+    this.startTimeMs = this.time.now;
   }
 
   // ---------------- UI ----------------
@@ -197,7 +224,6 @@ class Stage1 extends Phaser.Scene {
     ).setStrokeStyle(2, 0x0b0f14);
 
     r.setDepth(this.DEPTH.platforms);
-
     this.physics.add.existing(r, true);
     this.platforms.add(r);
   }
@@ -318,7 +344,7 @@ class Stage1 extends Phaser.Scene {
     this.scale.on("resize", () => this.scene.restart());
   }
 
-  // ---------------- Nolikšanas “anti-stack” helpers ----------------
+  // ---------------- Drop helpers ----------------
   snapToGrid(x) {
     return Math.round(x / this.DROP_GRID) * this.DROP_GRID;
   }
@@ -368,6 +394,7 @@ class Stage1 extends Phaser.Scene {
 
   // ---------------- Paņem / noliec ----------------
   tryPickup() {
+    if (this.finished) return;
     if (this.carrying) return;
 
     const px = this.player.x;
@@ -380,15 +407,26 @@ class Stage1 extends Phaser.Scene {
       if (!ex.active) return;
       if (ex.getData("held")) return;
 
-      // atļaujam paņemt arī “noliktos” (ja vajag pārkārtot)
       const d = Phaser.Math.Distance.Between(px, py, ex.x, ex.y);
       if (d < 55 && d < bestD) { best = ex; bestD = d; }
     });
 
     if (!best) return;
 
+    // Ja aparāts bija pareizajā vietā, paņemot atbrīvojam slotu un samazinām Gatavs
+    const slotRef = best.getData("slotRef");
+    if (slotRef) {
+      slotRef.used = false;
+      slotRef.mark.setAlpha(0.50);
+      slotRef.icon.setAlpha(1);
+
+      best.setData("slotRef", null);
+
+      this.readyCount = Math.max(0, this.readyCount - 1);
+      this.readyText.setText(`Gatavs: ${this.readyCount}/${this.totalCount}`);
+    }
+
     best.setData("held", true);
-    best.setData("placed", false); // ja bija nolikts, paņemot tas vairs nav “fiksēts”
     best.body.enable = false;
     best.setDepth(this.DEPTH.carry);
 
@@ -396,6 +434,7 @@ class Stage1 extends Phaser.Scene {
   }
 
   tryDrop() {
+    if (this.finished) return;
     if (!this.carrying) return;
 
     const ex = this.carrying;
@@ -404,30 +443,27 @@ class Stage1 extends Phaser.Scene {
     ex.body.enable = true;
     ex.setDepth(this.DEPTH.ext);
 
-    // vēlamā vieta pie kājām
     const desiredX = this.player.x + 26;
     const desiredY = this.player.y - (44 / 2);
 
-    // sākotnēji meklējam brīvu nolikšanu
     let pos = this.findFreeDropPos(desiredX, desiredY, ex);
 
-    // ja noliek busā -> kļūst OK
+    // BUSS: noliekot busā → kļūst OK un “paslīd” dziļāk busā
     const inBus = Phaser.Geom.Rectangle.Contains(this.busZone, pos.x, pos.y);
     if (inBus) {
       this.setExtState(ex, "OK");
-      // busā arī “paslīd” uz priekšu, lai nestāv tieši pie ieejas
       pos = this.findFreeDropPos(pos.x + this.DROP_GRID * 2, pos.y, ex);
       this.hopTo(ex, pos.x, pos.y);
       this.carrying = null;
       return;
     }
 
-    // OK + uz marķiera -> punkts, bet TIKAI ja slots brīvs
+    // OK + uz slot marķiera → Gatavs +1, bet tikai ja slots brīvs
     if (ex.getData("state") === "OK") {
       const slot = this.findSlotUnder(pos.x, pos.y);
 
       if (slot && slot.used) {
-        // vieta jau aizņemta -> aparāts izslīd ārā no zonas (bez punkta)
+        // Aizņemts: aparāts izslīd ārā (bez progresa)
         const slide = this.findFreeDropPos(pos.x + this.DROP_GRID * 2, pos.y, ex);
         this.hopTo(ex, slide.x, slide.y);
         this.carrying = null;
@@ -435,34 +471,96 @@ class Stage1 extends Phaser.Scene {
       }
 
       if (slot && !slot.used) {
-        // ieliekam precīzi vietā, piešķiram punktu un atzīmējam slotu kā izmantotu
+        // Fiksējam vietā
         slot.used = true;
-        slot.mark.setAlpha(0.25); // vizuāli “iztērēts”
+        slot.mark.setAlpha(0.25);
         slot.icon.setAlpha(0.35);
 
-        ex.setData("placed", true);
         ex.body.enable = false;
         ex.x = slot.x;
         ex.y = slot.y;
+        ex.setData("slotRef", slot);
 
-        this.score += 1;
-        this.scoreText.setText(`Punkti: ${this.score}`);
+        this.readyCount += 1;
+        this.readyText.setText(`Gatavs: ${this.readyCount}/${this.totalCount}`);
+
+        // Win condition
+        if (this.readyCount >= this.totalCount) {
+          this.finishGame();
+        }
 
         this.carrying = null;
         return;
       }
     }
 
-    // parasts nolikums
+    // Parasts nolikums
     this.hopTo(ex, pos.x, pos.y);
     this.carrying = null;
   }
 
+  // ---------------- Finish screen ----------------
+  finishGame() {
+    if (this.finished) return;
+    this.finished = true;
+
+    const elapsedMs = this.time.now - this.startTimeMs;
+    const totalSec = Math.floor(elapsedMs / 1000);
+    const mm = Math.floor(totalSec / 60);
+    const ss = totalSec % 60;
+
+    // Apturam kustību / fiziku
+    this.player.body.setVelocity(0, 0);
+
+    // Overlay
+    const w = 1100, h = 650;
+    const bg = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
+
+    this.add.text(w / 2, 250, "Līmenis pabeigts!", {
+      fontFamily: "Arial",
+      fontSize: "42px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 1);
+
+    this.add.text(w / 2, 320, `Jūsu laiks: ${mm} min ${ss} sek`, {
+      fontFamily: "Arial",
+      fontSize: "24px",
+      color: "#e7edf5"
+    }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 1);
+
+    const btn = this.add.rectangle(w / 2, 410, 260, 60, 0x007755)
+      .setDepth(this.DEPTH.overlay + 1)
+      .setInteractive({ useHandCursor: true });
+
+    this.add.text(w / 2, 410, "Atpakaļ uz Menu", {
+      fontFamily: "Arial",
+      fontSize: "20px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 2);
+
+    btn.on("pointerdown", () => {
+      // ja tev ir MainMenu aina projektā:
+      this.scene.start("MainMenu");
+      // ja šobrīd testē tikai Stage1, vari uz laiku nomainīt uz:
+      // this.scene.restart();
+    });
+  }
+
   // ---------------- Update ----------------
   update(time, delta) {
-    const dt = delta / 1000;
+    // Taimeris
+    if (!this.finished) {
+      const elapsedMs = time - this.startTimeMs;
+      const totalSec = Math.floor(elapsedMs / 1000);
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+      const ss = String(totalSec % 60).padStart(2, "0");
+      this.timeText.setText(`Laiks: ${mm}:${ss}`);
+    }
 
-    // Lifts kustas (starp min/max SURFACE Y)
+    // Lifts kustas arī uz leju (šahtas dēļ netraucēs grīdas)
+    const dt = delta / 1000;
     const minCenterY = this.elevatorMinSurfaceY + this.THICK / 2;
     const maxCenterY = this.elevatorMaxSurfaceY + this.THICK / 2;
 
@@ -483,15 +581,19 @@ class Stage1 extends Phaser.Scene {
     this.prevElevY = this.elevator.y;
 
     // Kustība
-    const left = this.cursors.left.isDown || this.touch.left;
-    const right = this.cursors.right.isDown || this.touch.right;
-    const speed = 260;
+    if (!this.finished) {
+      const left = this.cursors.left.isDown || this.touch.left;
+      const right = this.cursors.right.isDown || this.touch.right;
+      const speed = 260;
 
-    if (left) this.player.body.setVelocityX(-speed);
-    else if (right) this.player.body.setVelocityX(speed);
-    else this.player.body.setVelocityX(0);
+      if (left) this.player.body.setVelocityX(-speed);
+      else if (right) this.player.body.setVelocityX(speed);
+      else this.player.body.setVelocityX(0);
+    } else {
+      this.player.body.setVelocityX(0);
+    }
 
-    // Paņem/noliec (keyboard JustDown + touch “vienreiz”)
+    // Paņem/noliec
     const upJust = Phaser.Input.Keyboard.JustDown(this.cursors.up) || this.touch.up;
     const downJust = Phaser.Input.Keyboard.JustDown(this.cursors.down) || this.touch.down;
 
@@ -514,7 +616,7 @@ class Stage1 extends Phaser.Scene {
       this.carrying.setDepth(this.DEPTH.carry);
     }
 
-    // “Brauc līdzi” liftam, ja stāv uz tā (gan uz augšu, gan uz leju)
+    // “Brauc līdzi” liftam
     const playerOnElevator =
       this.player.body.touching.down &&
       this.elevator.body.touching.up &&
@@ -525,11 +627,9 @@ class Stage1 extends Phaser.Scene {
       if (this.carrying) this.carrying.y += elevDeltaY;
     }
 
-    // Drošības klamps: neļaujam “iegrimt” zem 1. stāva virsmas
-    // (ja kaut kas tomēr glitch)
-    const minPlayerY = this.FLOORS_Y[4];
-    if (this.player.y > minPlayerY + 80) {
-      this.player.y = minPlayerY + 80;
+    // Drošība: nekad neļaujam aiziet zem 1. stāva “loģiskās zonas”
+    if (this.player.y > this.FLOORS_Y[4] + 90) {
+      this.player.y = this.FLOORS_Y[4] + 90;
       this.player.body.setVelocityY(0);
     }
   }
