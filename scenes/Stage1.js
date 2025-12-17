@@ -15,7 +15,7 @@ class Stage1 extends Phaser.Scene {
     // Fizika
     this.physics.world.gravity.y = 900;
 
-    // Platformas
+    // Platformas (statiski stāvi)
     this.platforms = this.physics.add.staticGroup();
 
     // 1. stāvs (apakšā) pilnā platumā
@@ -37,6 +37,31 @@ class Stage1 extends Phaser.Scene {
       fontStyle: "bold"
     }).setOrigin(0.5);
 
+    // ===== LIFTS KĀ GRĪDAS PLATFORMA =====
+    // Lifts ir tikpat “grīdas gabals”, tikai kustīgs
+    const elevatorWidth = 240;
+    const elevatorX = 650;
+
+    this.elevatorMinY = this.FLOORS_Y[0];       // augšējā stāva līmenis
+    this.elevatorMaxY = this.FLOORS_Y[4] + 40;  // nedaudz “pagrabstāvā”, lai var uzskriet
+    this.elevatorSpeed = 60;                    // px/sec
+    this.elevatorDir = -1;                      // sākumā brauc uz augšu
+
+    this.elevator = this.add.rectangle(
+      elevatorX,
+      this.elevatorMaxY + this.THICK / 2,
+      elevatorWidth,
+      this.THICK,
+      0x555555
+    ).setStrokeStyle(2, 0x1a1f26);
+
+    this.physics.add.existing(this.elevator);
+    this.elevator.body.setAllowGravity(false);
+    this.elevator.body.setImmovable(true);
+
+    // Lai varētu korekti pārbīdīt spēlētāju līdzi liftam:
+    this.prevElevY = this.elevator.y;
+
     // Spēlētājs
     this.player = this.makePlayer(140, this.FLOORS_Y[4]);
     this.physics.add.existing(this.player);
@@ -45,14 +70,15 @@ class Stage1 extends Phaser.Scene {
     this.player.body.setSize(28, 54);
     this.player.body.setOffset(-14, -54);
 
-    // Kolīzijas
+    // Kolīzijas: ar stāviem + ar liftu
     this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.elevator);
 
     // Kontroles
     this.cursors = this.input.keyboard.createCursorKeys();
 
     // UI
-    this.add.text(14, 12, "Stage 1: kustība + platformas (lifts nākamajā solī)", {
+    this.add.text(14, 12, "Stage 1: lifts (platforma) + kustība", {
       fontFamily: "Arial",
       fontSize: "16px",
       color: "#e7edf5",
@@ -60,7 +86,7 @@ class Stage1 extends Phaser.Scene {
       padding: { x: 10, y: 6 }
     });
 
-    this.add.text(14, 46, "← → kustība", {
+    this.add.text(14, 46, "← → kustība | lifts brauc automātiski", {
       fontFamily: "Arial",
       fontSize: "16px",
       color: "#e7edf5",
@@ -69,7 +95,30 @@ class Stage1 extends Phaser.Scene {
     });
   }
 
-  update() {
+  update(time, delta) {
+    // --- LIFTA KUSTĪBA ---
+    const dt = delta / 1000;
+
+    const dy = this.elevatorSpeed * dt * this.elevatorDir;
+    this.elevator.y += dy;
+
+    if (this.elevator.y <= this.elevatorMinY + this.THICK / 2) {
+      this.elevator.y = this.elevatorMinY + this.THICK / 2;
+      this.elevatorDir = 1;
+    }
+    if (this.elevator.y >= this.elevatorMaxY + this.THICK / 2) {
+      this.elevator.y = this.elevatorMaxY + this.THICK / 2;
+      this.elevatorDir = -1;
+    }
+
+    // atjauno fizikas body
+    this.elevator.body.updateFromGameObject();
+
+    // cik lifts reāli pārbīdījās šajā kadrā
+    const elevDeltaY = this.elevator.y - this.prevElevY;
+    this.prevElevY = this.elevator.y;
+
+    // --- SPĒLĒTĀJA KUSTĪBA ---
     const speed = 260;
 
     if (this.cursors.left.isDown) {
@@ -78,6 +127,18 @@ class Stage1 extends Phaser.Scene {
       this.player.body.setVelocityX(speed);
     } else {
       this.player.body.setVelocityX(0);
+    }
+
+    // --- “BRAUC LĪDZI” MEHĀNIKA ---
+    // Arcade fizika ne vienmēr pati “piebīda” spēlētāju līdzi kustīgai platformai,
+    // tāpēc, ja spēlētājs stāv uz lifta, pārbīdam viņu tikpat, cik lifts.
+    const playerOnElevator =
+      this.player.body.touching.down &&
+      this.elevator.body.touching.up &&
+      Math.abs(this.player.body.bottom - this.elevator.body.top) <= 3;
+
+    if (playerOnElevator) {
+      this.player.y += elevDeltaY;
     }
   }
 
@@ -102,7 +163,13 @@ class Stage1 extends Phaser.Scene {
     const stripe2 = this.add.rectangle(0, -7, 32, 6, 0x00ff66);
 
     const head = this.add.circle(0, -62, 12, 0xffe2b8);
-    const hair = this.add.arc(0, -66, 13, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(-20), true, 0xffd24a);
+    const hair = this.add.arc(
+      0, -66, 13,
+      Phaser.Math.DegToRad(200),
+      Phaser.Math.DegToRad(-20),
+      true,
+      0xffd24a
+    );
 
     c.add([body, stripe1, stripe2, head, hair]);
     return c;
