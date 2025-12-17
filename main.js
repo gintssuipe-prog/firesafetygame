@@ -4,14 +4,11 @@
     parent: "game",
     width: 1100,
     height: 650,
-    backgroundColor: "#111111",
-    scene: {
-      create() {
-        this.add.text(550, 325, "Phaser works", {
-          fontSize: "32px",
-          color: "#00ff88"
-        }).setOrigin(0.5);
-      }
+    backgroundColor: "#000000",
+    scene: [Intro, MainMenu],
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
     }
   };
 
