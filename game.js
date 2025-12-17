@@ -3,29 +3,44 @@
   const H = 650;
   const ROUND_SECONDS = 60;
 
-  const LEVEL = {
-    floorY: 520,
-    bus: { x: 70, y: 420, w: 220, h: 160 },
+  // Grīdu “virsmas” Y (tieši kur stāv kājas)
+  const FLOORS_Y = [110, 220, 330, 440, 550]; // 5 stāvi redzami uzreiz
+  const PLATFORM_THICK = 20;
 
-    extinguishers: [
-      { x: 420, y: 500 }, { x: 520, y: 500 }, { x: 650, y: 500 },
-      { x: 780, y: 500 }, { x: 900, y: 500 }, { x: 980, y: 500 }
-    ],
-
-    slots: [
-      { x: 460, y: 500 }, { x: 580, y: 500 }, { x: 700, y: 500 },
-      { x: 820, y: 500 }, { x: 940, y: 500 }
-    ],
-
-    walls: [
-      { x: 340, y: 360, w: 20, h: 200 },
-      { x: 620, y: 360, w: 20, h: 200 },
-      { x: 860, y: 360, w: 20, h: 200 },
-      { x: 340, y: 300, w: 300, h: 20 },
-      { x: 640, y: 260, w: 240, h: 20 },
-      { x: 880, y: 300, w: 180, h: 20 }
-    ]
+  // Lifta ģeometrija
+  const ELEVATOR = {
+    x: 650,
+    w: 140,
+    h: 110,
+    speed: 55, // px/sec (lēns)
   };
+
+  // Buss apakšā pa kreisi (1. stāvs)
+  const BUS = { x: 70, y: 455, w: 220, h: 155 };
+
+  // Aparātu “vietas” (sarkanais kvadrāts) + aparāts sākumā turpat (NOK)
+  // y ir uz konkrētā stāva virsmas (FLOORS_Y)
+  const SPOTS = [
+    // 2. stāvs
+    { x: 820, y: FLOORS_Y[1] - 10 },
+    { x: 980, y: FLOORS_Y[1] - 10 },
+
+    // 3. stāvs
+    { x: 760, y: FLOORS_Y[2] - 10 },
+    { x: 940, y: FLOORS_Y[2] - 10 },
+
+    // 4. stāvs
+    { x: 800, y: FLOORS_Y[3] - 10 },
+    { x: 1000, y: FLOORS_Y[3] - 10 },
+
+    // 5. stāvs
+    { x: 860, y: FLOORS_Y[0] - 10 },
+    { x: 1020, y: FLOORS_Y[0] - 10 },
+
+    // 1. stāvs (zemāk) – pāris gabali arī te
+    { x: 520, y: FLOORS_Y[4] - 10 },
+    { x: 900, y: FLOORS_Y[4] - 10 },
+  ];
 
   class Main extends Phaser.Scene {
     constructor() {
@@ -36,88 +51,117 @@
       this.lastInteractAt = 0;
       this.touch = { left:false, right:false, up:false, down:false };
       this.gameOver = false;
+
+      this.elevDir = -1; // -1 uz augšu, +1 uz leju (phaser y ass: uz leju)
+      this.prevElevY = null;
+      this.onElevatorThisFrame = false;
     }
 
     create() {
       this.cameras.main.setBackgroundColor("#0b0f14");
 
-      // fons
+      // Fons
       const bg = this.add.graphics();
       bg.fillStyle(0x121a22, 1);
       bg.fillRect(0, 0, W, H);
 
-      // grīda
-      const floor = this.add.rectangle(W/2, LEVEL.floorY + 40, W, 120, 0x1a2430);
-      this.physics.add.existing(floor, true);
+      // Platformas (stāvi)
+      // 1. stāvs: pilna platuma grīda
+      // 2–5 stāvs: labā puse (kā tavā shēmā)
+      this.platforms = this.physics.add.staticGroup();
 
-      // buss
+      // 1. stāvs (apakšā)
+      this.addPlatform(0, FLOORS_Y[4], W, PLATFORM_THICK);
+
+      // pārējie (augšējie) stāvi labajā pusē
+      const rightStartX = 520;
+      const rightWidth = 640;
+      for (let i = 0; i < 4; i++) {
+        this.addPlatform(rightStartX, FLOORS_Y[i], rightWidth, PLATFORM_THICK);
+      }
+
+      // Buss (balts)
       this.busRect = this.add.rectangle(
-        LEVEL.bus.x + LEVEL.bus.w/2,
-        LEVEL.bus.y + LEVEL.bus.h/2,
-        LEVEL.bus.w,
-        LEVEL.bus.h,
+        BUS.x + BUS.w/2,
+        BUS.y + BUS.h/2,
+        BUS.w,
+        BUS.h,
         0xf2f4f8
       ).setStrokeStyle(4, 0xc7ced8);
 
-      this.add.text(this.busRect.x, LEVEL.bus.y + 10, "BUSS", {
+      this.add.text(this.busRect.x, BUS.y + 10, "BUSS", {
         fontFamily: "system-ui, Segoe UI, Roboto, Arial",
         fontSize: "18px",
         color: "#0b0f14"
       }).setOrigin(0.5, 0);
 
-      this.busZone = new Phaser.Geom.Rectangle(LEVEL.bus.x, LEVEL.bus.y, LEVEL.bus.w, LEVEL.bus.h);
+      this.busZone = new Phaser.Geom.Rectangle(BUS.x, BUS.y, BUS.w, BUS.h);
 
-      // sienas
-      this.walls = this.physics.add.staticGroup();
-      LEVEL.walls.forEach(w => {
-        const r = this.add.rectangle(w.x + w.w/2, w.y + w.h/2, w.w, w.h, 0x2a394a);
-        r.setStrokeStyle(2, 0x0b0f14);
-        this.physics.add.existing(r, true);
-        this.walls.add(r);
-      });
+      // Lifts (kustīga platforma)
+      this.elevator = this.add.rectangle(ELEVATOR.x, FLOORS_Y[4] - (ELEVATOR.h/2), ELEVATOR.w, ELEVATOR.h, 0x3a3f46)
+        .setStrokeStyle(3, 0x1a1f26);
 
-      // sloti (sarkanie kvadrāti)
+      this.physics.add.existing(this.elevator);
+      this.elevator.body.setAllowGravity(false);
+      this.elevator.body.setImmovable(true);
+
+      // Aparātu vietas (sarkanie kvadrāti) – VISI ZĪMĒJAS PĀRI aparātiem
       this.slots = [];
-      LEVEL.slots.forEach(s => {
-        const base = this.add.rectangle(s.x, s.y, 44, 44, 0xa90f0f).setStrokeStyle(3, 0xff6b6b);
-        const icon = this.add.text(s.x, s.y, "🧯", { fontSize: "22px" }).setOrigin(0.5);
-        this.slots.push({ x: s.x, y: s.y, used: false, base, icon });
+      SPOTS.forEach((p) => {
+        const base = this.add.rectangle(p.x, p.y, 44, 44, 0xa90f0f)
+          .setStrokeStyle(3, 0xff6b6b)
+          .setAlpha(0.55)
+          .setDepth(40);
+
+        const icon = this.add.text(p.x, p.y, "🧯", { fontSize: "22px" })
+          .setOrigin(0.5)
+          .setDepth(41);
+
+        this.slots.push({ x: p.x, y: p.y, used: false, base, icon });
       });
 
-      // aparāti (NOK)
-      this.extinguishers = this.physics.add.group({ allowGravity: false });
-      LEVEL.extinguishers.forEach(p => {
+      // Aparāti (NOK) – sākumā uz vietām
+      this.extinguishers = this.physics.add.group();
+      SPOTS.forEach((p) => {
         const ex = this.makeExtinguisher(p.x, p.y, "NOK");
-        ex.setData("state", "NOK");
-        ex.setData("placed", false);
+        ex.setData("state", "NOK");     // NOK / OK
+        ex.setData("placed", false);    // ielikts pareizi atpakaļ
+        ex.setData("held", false);
         this.extinguishers.add(ex);
       });
 
-      // spēlētājs
-      this.player = this.makePlayer(120, LEVEL.floorY);
+      // Spēlētājs
+      this.player = this.makePlayer(140, FLOORS_Y[4]); // sākums apakšā pie busa
       this.physics.add.existing(this.player);
-      this.player.body.setAllowGravity(false);
+      this.player.body.setCollideWorldBounds(true);
       this.player.body.setSize(28, 54);
       this.player.body.setOffset(-14, -54);
-      this.player.body.setCollideWorldBounds(true);
 
-      // kolīzijas
-      this.physics.add.collider(this.player, floor);
-      this.physics.add.collider(this.player, this.walls);
-      this.physics.add.collider(this.extinguishers, floor);
+      // Gravitācija (lai krīt, ja “izmetas pa logu”)
+      this.physics.world.gravity.y = 900;
+
+      // Kolīzijas
+      this.physics.add.collider(this.player, this.platforms);
+      this.physics.add.collider(this.extinguishers, this.platforms);
+
+      // Kolīzija ar liftu (un “pārnešana” uz augšu/leju)
+      this.physics.add.collider(this.player, this.elevator, () => {
+        // ja stāv uz lifta
+        if (this.player.body.touching.down && this.elevator.body.touching.up) {
+          this.onElevatorThisFrame = true;
+        }
+      });
 
       // UI
-      this.scoreText = this.add.text(14, 12, "Punkti: 0", this.uiStyle()).setDepth(50);
-      this.timerText = this.add.text(14, 48, "Laiks: 60", this.uiStyle()).setDepth(50);
-      this.hintText = this.add.text(14, 84, "← → kustība | ↑ paņem | ↓ noliec", this.uiStyle()).setDepth(50);
+      this.scoreText = this.add.text(14, 12, "Punkti: 0", this.uiStyle()).setDepth(80);
+      this.timerText = this.add.text(14, 48, "Laiks: 60", this.uiStyle()).setDepth(80);
+      this.hintText = this.add.text(14, 84, "← → kustība | ↑ paņem | ↓ noliec", this.uiStyle()).setDepth(80);
 
-      // klaviatūra
+      // Klaviatūra + mobilās pogas
       this.cursors = this.input.keyboard.createCursorKeys();
-
-      // mobilās pogas
       this.createTouchControls();
 
-      // taimeris
+      // Taimeris
       this.time.addEvent({
         delay: 1000,
         loop: true,
@@ -128,6 +172,9 @@
           if (this.timeLeft <= 0) this.endGame();
         }
       });
+
+      // Lifta sākuma stāvoklis
+      this.prevElevY = this.elevator.y;
     }
 
     uiStyle() {
@@ -140,15 +187,21 @@
       };
     }
 
-    makePlayer(x, y) {
-      const c = this.add.container(x, y);
+    addPlatform(xLeft, surfaceY, width, thickness) {
+      // platformas virsma = surfaceY, bet rectangle centrs ir surfaceY + thickness/2
+      const r = this.add.rectangle(xLeft + width/2, surfaceY + thickness/2, width, thickness, 0x0f5f7a)
+        .setStrokeStyle(2, 0x0b0f14);
+      this.physics.add.existing(r, true);
+      this.platforms.add(r);
+    }
 
-      // melns ķermenis + koši zaļas joslas
+    makePlayer(x, surfaceY) {
+      const c = this.add.container(x, surfaceY);
+
       const body = this.add.rectangle(0, -31, 32, 46, 0x0b0b0b);
       const stripe1 = this.add.rectangle(0, -23, 32, 8, 0x00ff66);
       const stripe2 = this.add.rectangle(0, -7, 32, 6, 0x00ff66);
 
-      // galva + blondi mati
       const head = this.add.circle(0, -62, 12, 0xffe2b8);
       const hair = this.add.arc(0, -66, 13, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(-20), true, 0xffd24a);
 
@@ -171,13 +224,15 @@
       c.add([shell, badge, txt]);
 
       this.physics.add.existing(c);
-      c.body.setAllowGravity(false);
+      c.body.setBounce(0);
+      c.body.setCollideWorldBounds(false);
       c.body.setSize(28, 44);
       c.body.setOffset(-14, -22);
 
       c.setData("txt", txt);
       c.setData("shell", shell);
       c.setData("badge", badge);
+
       return c;
     }
 
@@ -208,7 +263,7 @@
         const r = this.add.rectangle(x + btnSize/2, y + btnSize/2, btnSize, btnSize, 0x111822)
           .setAlpha(0.75)
           .setScrollFactor(0)
-          .setDepth(60)
+          .setDepth(90)
           .setInteractive();
         r.setStrokeStyle(2, 0x2a394a);
 
@@ -216,12 +271,13 @@
           fontFamily: "system-ui, Segoe UI, Roboto, Arial",
           fontSize: "20px",
           color: "#e7edf5"
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(91);
 
         return { r, t };
       };
 
       const baseY = this.scale.height - pad - btnSize;
+
       const left  = mk(pad, baseY, "◀");
       const right = mk(pad + btnSize + 10, baseY, "▶");
       const up    = mk(this.scale.width - pad - btnSize*2 - 10, baseY, "▲");
@@ -263,7 +319,7 @@
       if (!best) return;
 
       best.setData("held", true);
-      best.body.enable = false;
+      best.body.enable = false; // rokās = bez fizikas
       this.carrying = best;
       this.hintText.setText("Nes aparātu: ↓ noliec | Busā noliekot kļūs OK");
     }
@@ -283,14 +339,17 @@
       ex.setData("held", false);
       ex.body.enable = true;
 
+      // noliekam pie kājām
       ex.x = this.player.x + 26;
-      ex.y = LEVEL.floorY - 12;
+      ex.y = this.player.y - 10;
 
+      // busā noliekot -> kļūst OK
       const inBus = Phaser.Geom.Rectangle.Contains(this.busZone, ex.x, ex.y);
       if (inBus) {
         this.setExtState(ex, "OK");
       }
 
+      // OK + uz slot = punkts + fiksēts
       if (ex.getData("state") === "OK" && !ex.getData("placed")) {
         const slot = this.findSlotUnder(ex.x, ex.y);
         if (slot) {
@@ -355,29 +414,47 @@
       localStorage.setItem("aplink_firegame_scores", JSON.stringify(rows.slice(0, 50)));
     }
 
-    update() {
+    update(time, delta) {
       if (this.gameOver) return;
 
+      // reset lifta “stāv uz lifta” flags
+      this.onElevatorThisFrame = false;
+
+      // -------- LIFTS kustība (auto) --------
+      const dt = delta / 1000;
+      const topY = FLOORS_Y[0] - (ELEVATOR.h / 2);
+      const bottomY = FLOORS_Y[4] - (ELEVATOR.h / 2);
+
+      // kustība ar manuālu Y (lai nav jākonfigurē tween)
+      let newY = this.elevator.y + (this.elevDir * ELEVATOR.speed * dt);
+      if (newY < topY) { newY = topY; this.elevDir = +1; }
+      if (newY > bottomY) { newY = bottomY; this.elevDir = -1; }
+
+      // deltaY lifta pārnešanai
+      const elevDeltaY = newY - this.elevator.y;
+
+      this.elevator.y = newY;
+      this.elevator.body.updateFromGameObject();
+
+      // vizuāli: buss “izceļas” ja esi busā
+      const inBus = Phaser.Geom.Rectangle.Contains(this.busZone, this.player.x, this.player.y - 10);
+      this.busRect.setAlpha(inBus ? 1 : 0.92);
+
+      // -------- Kustība tikai horizontāli --------
       const left  = this.cursors.left.isDown  || this.touch.left;
       const right = this.cursors.right.isDown || this.touch.right;
 
       const up = Phaser.Input.Keyboard.JustDown(this.cursors.up) || this.touch.up;
       const down = Phaser.Input.Keyboard.JustDown(this.cursors.down) || this.touch.down;
 
-      const speed = 240;
+      const speed = 260;
       let vx = 0;
       if (left) vx -= speed;
       if (right) vx += speed;
+      this.player.body.setVelocityX(vx);
 
-      this.player.body.setVelocity(vx, 0);
-      this.player.y = LEVEL.floorY;
-
-      if (this.carrying) {
-        this.carrying.x = this.player.x + 28;
-        this.carrying.y = this.player.y - 30;
-      }
-
-      const now = this.time.now;
+      // -------- “Paņem/noliec” --------
+      const now = time;
       if (up && now - this.lastInteractAt > 140) {
         this.lastInteractAt = now;
         this.tryPickup();
@@ -389,8 +466,30 @@
         this.touch.down = false;
       }
 
-      const inBus = Phaser.Geom.Rectangle.Contains(this.busZone, this.player.x, this.player.y - 10);
-      this.busRect.setAlpha(inBus ? 1 : 0.92);
+      // -------- Ja nes aparātu, tas seko pie rokas --------
+      if (this.carrying) {
+        this.carrying.x = this.player.x + 28;
+        this.carrying.y = this.player.y - 30;
+      }
+
+      // -------- Lifta “pārnešana” --------
+      // Ja stāvi uz lifta, kusties kopā ar to (bez jump)
+      // (Arcade engine pats pilnībā neiznes šo, tāpēc piespiežam ar elevDeltaY)
+      // Nosacījums: kājas pieskaras kaut kam un spēlētājs atrodas virs lifta zonā
+      const playerFeetY = this.player.y;
+      const elevatorTopSurface = this.elevator.y - (ELEVATOR.h / 2);
+
+      const onElevatorGeom =
+        Math.abs(playerFeetY - elevatorTopSurface) < 6 &&
+        Math.abs(this.player.x - this.elevator.x) < (ELEVATOR.w / 2 + 10);
+
+      if (onElevatorGeom && this.player.body.blocked.down) {
+        this.player.y += elevDeltaY;
+        this.player.body.updateFromGameObject();
+      }
+
+      // drošība: neatļaujam izlidot ārpus ekrāna
+      this.player.x = Phaser.Math.Clamp(this.player.x, 10, W - 10);
     }
   }
 
@@ -404,4 +503,3 @@
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
   });
 })();
-
