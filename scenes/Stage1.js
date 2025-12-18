@@ -46,9 +46,9 @@ class Stage1 extends Phaser.Scene {
     };
 
     // ---- Grīdas (5 stāvi) ----
-    // ✅ Pārbīdam spēli uz leju + samazinām “pagrabstāvu”
-    const topY = 130;                 // bija 70
-    const bottomY = this.playH - 35;  // bija this.playH - 70
+    // Pārbīdam spēli uz leju + samazinām “pagrabstāvu”
+    const topY = 130;
+    const bottomY = this.playH - 35;
 
     this.FLOORS_Y = [];
     for (let i = 0; i < 5; i++) {
@@ -92,7 +92,7 @@ class Stage1 extends Phaser.Scene {
 
     // ---- BUSS ----
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
-    this.BUS.x = 8;
+    this.BUS.x = 0; // ✅ pie pašas malas
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
 
     const busRect = this.add.rectangle(
@@ -103,6 +103,7 @@ class Stage1 extends Phaser.Scene {
       0xe9edf2
     ).setStrokeStyle(4, 0xc7ced8).setDepth(this.DEPTH.bus);
 
+    // BUSS uzraksts
     this.add.text(busRect.x, this.BUS.y + 8, "BUSS", {
       fontFamily: "Arial",
       fontSize: "16px",
@@ -110,6 +111,22 @@ class Stage1 extends Phaser.Scene {
       fontStyle: "bold"
     }).setOrigin(0.5, 0).setDepth(this.DEPTH.bus + 1);
 
+    // ✅ RITENIS (aizmugures)
+    // novietojums: pie bussa apakšas, nedaudz ārā no korpusa
+    const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
+    const wheelY = this.BUS.y + this.BUS.h - 8;
+
+    // riepa
+    this.add.circle(wheelX, wheelY, 20, 0x1a1a1a, 1)
+      .setStrokeStyle(3, 0x3a3a3a, 1)
+      .setDepth(this.DEPTH.bus - 1);
+
+    // disks
+    this.add.circle(wheelX, wheelY, 10, 0x8a8a8a, 1)
+      .setStrokeStyle(2, 0x2a2a2a, 1)
+      .setDepth(this.DEPTH.bus);
+
+    // bus “zona”
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
 
     // 6 vietas busā
@@ -172,7 +189,7 @@ class Stage1 extends Phaser.Scene {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
-      // uzlīme virs aparāta (paliek augstu, bet tagad top stāvs ir zemāk)
+      // uzlīme virs aparāta
       const stickerY = extY - 54;
 
       const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
@@ -601,20 +618,15 @@ class Stage1 extends Phaser.Scene {
 
   makeSpotsPortrait(W) {
     const xLeft = 62;
-
-    // TOP kreisais pabīdīts pa labi, lai netraucē UI
     const xLeftTop = 180;
-
     const xRight = Math.round(W * 0.90);
     const xTopExtra = Math.round(W * 0.80);
 
     return [
-      // TOP (3 gab.)
       { floor: 0, x: xLeftTop },
       { floor: 0, x: xRight },
       { floor: 0, x: xTopExtra },
 
-      // 2.–4. stāvs
       { floor: 1, x: xLeft },
       { floor: 1, x: xRight },
 
@@ -624,7 +636,6 @@ class Stage1 extends Phaser.Scene {
       { floor: 3, x: xLeft },
       { floor: 3, x: xRight },
 
-      // apakšā tikai 1 pa labi
       { floor: 4, x: xRight }
     ];
   }
