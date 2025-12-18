@@ -71,6 +71,14 @@ class Stage1 extends Phaser.Scene {
 
     for (let i = 0; i < 4; i++) {
       const y = this.FLOORS_Y[i];
+
+      // kreisās puses šaurā maliņa (jauna): maza platforma katrā stāvā
+      // (izņemot 1. stāvu, jo tas ir pilns jau)
+      const leftLedgeX = 26;
+      const leftLedgeW = 74;
+      this.addPlatform(leftLedgeX, y, leftLedgeW, this.THICK);
+
+      // labā puse ar caurumu šahtai (kā bija)
       const seg1W = holeL - rightStartX;
       if (seg1W > 12) this.addPlatform(rightStartX, y, seg1W, this.THICK);
 
@@ -80,7 +88,6 @@ class Stage1 extends Phaser.Scene {
     }
 
     // ---- BUSS (īsāks, vairāk pa kreisi; kapacitāte 6) ----
-    // Mazāks, lai vizuāli nebūtu “zem mājas”
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
     this.BUS.x = 8;
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
@@ -156,12 +163,10 @@ class Stage1 extends Phaser.Scene {
     this.extinguishers = this.physics.add.group();
     this.slots = [];
 
-    const spots = this.makeSpotsPortrait(W); // <- pārbīdīti prom no šahtas
+    const spots = this.makeSpotsPortrait(W); // <-- jauna shēma (kreisi + pa labi)
 
     spots.forEach(s => {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
-
-      // aparāts stāv uz grīdas
       const extY = floorSurfaceY - 22;
 
       // maza “uzlīme” virs novietošanas vietas
@@ -287,8 +292,6 @@ class Stage1 extends Phaser.Scene {
 
   createPortraitControls() {
     const W = this.scale.width;
-    const H = this.scale.height;
-
     const areaTop = this.playH;
     const areaH = this.controlsH;
 
@@ -336,7 +339,6 @@ class Stage1 extends Phaser.Scene {
       this.tweens.add({ targets: [btn, btn._label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
     };
 
-    // hold kustībai
     const bindHold = (btn, key) => {
       btn.on("pointerdown", () => { this.touch[key] = true; pressIn(btn); });
       btn.on("pointerup", () => { this.touch[key] = false; pressOut(btn); });
@@ -344,7 +346,6 @@ class Stage1 extends Phaser.Scene {
       btn.on("pointercancel", () => { this.touch[key] = false; pressOut(btn); });
     };
 
-    // tap darbībai
     const bindTap = (btn, key) => {
       btn.on("pointerdown", () => { this.touch[key] = true; pressIn(btn); });
       btn.on("pointerup", () => { pressOut(btn); });
@@ -413,18 +414,23 @@ class Stage1 extends Phaser.Scene {
     ex.body.enable = true;
     ex.setDepth(this.DEPTH.ext);
 
-    // noliecam pie kājām (pirms pārbaudes)
+    // noliecam pie kājām
     ex.x = this.player.x + 18 * this.facing;
     ex.y = this.player.y - 22;
 
     // 1) BUSS -> uzpilde (OK) + kapacitāte 6
     if (Phaser.Geom.Rectangle.Contains(this.busZone, ex.x, ex.y)) {
-      // ja nav vietas
       const freeIndex = this.busSlots.findIndex(s => !s.used);
+
       if (freeIndex === -1 || this.busStorage.length >= this.BUS_CAPACITY) {
-        // izslīd ārā no busa
-        ex.x = this.busZone.right + 18;
-        ex.y = this.busZone.bottom - 24;
+        // FIX glukam: izmetam ārā UZ ZEMES līmeņa, nevis zem grīdas
+        ex.body.enable = true;
+        ex.body.setVelocity(0, 0);
+
+        const groundY = this.FLOORS_Y[4] - 22;
+        ex.x = Math.min(this.scale.width - 18, this.busZone.right + 24);
+        ex.y = groundY;
+
         this.carrying = null;
         return;
       }
@@ -453,7 +459,6 @@ class Stage1 extends Phaser.Scene {
       const slot = this.findSlotUnder(ex.x, ex.y);
 
       if (slot && slot.used) {
-        // aizņemts -> pastumjam ārā
         ex.x += 22 * this.facing;
         this.carrying = null;
         return;
@@ -461,7 +466,7 @@ class Stage1 extends Phaser.Scene {
 
       if (slot && !slot.used) {
         slot.used = true;
-        slot.sticker.setFillStyle(0x2aa84a, 0.95); // zaļš “uzlīmes” stāvoklis
+        slot.sticker.setFillStyle(0x2aa84a, 0.95);
 
         ex.body.enable = false;
         ex.x = slot.x;
@@ -568,8 +573,7 @@ class Stage1 extends Phaser.Scene {
       fontStyle: "bold"
     }).setOrigin(0.5);
 
-    // ⚠️ ĶEKSIS: apzināti NAV (tu prasīji noņemt)
-
+    // ĶEKŠA NAV (apzināti)
     c.add([shell, badge, txt]);
 
     this.physics.add.existing(c);
@@ -598,17 +602,38 @@ class Stage1 extends Phaser.Scene {
     }
   }
 
+  // --- JAUNĀ SHĒMA: kreisā šaurā mala + labā puse;
+  //     1. stāvā (apakšā) tikai 1 aparāts pa labi;
+  //     “otrā” vieta pāriet uz augšējo stāvu -> tur 3 kopā
   makeSpotsPortrait(W) {
-    // SVARĪGI: prom no lifta šahtas (šahta ~ 0.62W)
-    const x1 = Math.round(W * 0.78);
-    const x2 = Math.round(W * 0.90);
+    // kreisā šaurā maliņa (uz mazās platformas)
+    const xLeft = 62;
 
+    // labā puse (prom no šahtas)
+    const xRight = Math.round(W * 0.90);
+
+    // papildus trešais augšā (mazliet pa kreisi no labā, lai nebūtu pārklāšanās)
+    const xTopExtra = Math.round(W * 0.80);
+
+    // floor: 0 = augšā, 4 = apakšā
     return [
-      { floor: 4, x: x1 }, { floor: 4, x: x2 },
-      { floor: 3, x: x1 }, { floor: 3, x: x2 },
-      { floor: 2, x: x1 }, { floor: 2, x: x2 },
-      { floor: 1, x: x1 }, { floor: 1, x: x2 },
-      { floor: 0, x: x1 }, { floor: 0, x: x2 }
+      // TOP (3 gab.)
+      { floor: 0, x: xLeft },
+      { floor: 0, x: xRight },
+      { floor: 0, x: xTopExtra },
+
+      // 2.–4. stāvs (pa 2 gab.)
+      { floor: 1, x: xLeft },
+      { floor: 1, x: xRight },
+
+      { floor: 2, x: xLeft },
+      { floor: 2, x: xRight },
+
+      { floor: 3, x: xLeft },
+      { floor: 3, x: xRight },
+
+      // 1. stāvs (apakšā) tikai 1 gab. pavisam pa labi
+      { floor: 4, x: xRight }
     ];
   }
 }
