@@ -46,8 +46,10 @@ class Stage1 extends Phaser.Scene {
     };
 
     // ---- Grīdas (5 stāvi) ----
-    const topY = 70;
-    const bottomY = this.playH - 70;
+    // ✅ Pārbīdam spēli uz leju + samazinām “pagrabstāvu”
+    const topY = 130;                 // bija 70
+    const bottomY = this.playH - 35;  // bija this.playH - 70
+
     this.FLOORS_Y = [];
     for (let i = 0; i < 5; i++) {
       const t = i / 4;
@@ -170,7 +172,7 @@ class Stage1 extends Phaser.Scene {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
-      // ✅ UZLĪME AUGSTĀK, LAI NENOSEDZAS AR APARĀTU
+      // uzlīme virs aparāta (paliek augstu, bet tagad top stāvs ir zemāk)
       const stickerY = extY - 54;
 
       const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
@@ -497,7 +499,7 @@ class Stage1 extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
+    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
 
     this.add.text(W / 2, 260, "Līmenis pabeigts!", {
       fontFamily: "Arial",
@@ -556,7 +558,7 @@ class Stage1 extends Phaser.Scene {
     // pelēks rokturis
     const handleBase = this.add.rectangle(0, -24, 16, 10, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
 
-    // slīps “uzgalis/šļūtene”
+    // slīps uzgalis
     const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
