@@ -26,7 +26,8 @@ class Stage1 extends Phaser.Scene {
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
-    this.cameras.main.setBackgroundColor("#0b0f14");
+    // ✅ FONS PILNĪGI MELNS
+    this.cameras.main.setBackgroundColor("#000000");
     this.physics.world.gravity.y = 900;
 
     // Slāņi
@@ -605,18 +606,14 @@ class Stage1 extends Phaser.Scene {
   // --- Shēma: kreisā šaurā mala + labā puse;
   //     1. stāvā (apakšā) tikai 1 aparāts pa labi;
   //     “otrā” vieta pāriet uz augšējo stāvu -> tur 3 kopā
-  //     + TOP kreisais pārbīdīts, lai netraucē UI (Gatavs/Laiks)
+  //     + TOP kreisais pārbīdīts pa labi, lai netraucē UI (Gatavs/Laiks)
   makeSpotsPortrait(W) {
-    // kreisā šaurā maliņa (uz mazās platformas)
     const xLeft = 62;
 
-    // TOP kreisais aparāts pabīdīts pa labi (kā tavā bildē)
-    const xLeftTop = 120;
+    // ✅ pārbīdīts pa labi
+    const xLeftTop = 180;
 
-    // labā puse (prom no šahtas)
     const xRight = Math.round(W * 0.90);
-
-    // papildus trešais augšā (mazliet pa kreisi no labā, lai nebūtu pārklāšanās)
     const xTopExtra = Math.round(W * 0.80);
 
     return [
