@@ -72,13 +72,13 @@ class Stage1 extends Phaser.Scene {
     for (let i = 0; i < 4; i++) {
       const y = this.FLOORS_Y[i];
 
-      // kreisās puses šaurā maliņa (jauna): maza platforma katrā stāvā
+      // kreisās puses šaurā maliņa: maza platforma katrā stāvā
       // (izņemot 1. stāvu, jo tas ir pilns jau)
       const leftLedgeX = 26;
       const leftLedgeW = 74;
       this.addPlatform(leftLedgeX, y, leftLedgeW, this.THICK);
 
-      // labā puse ar caurumu šahtai (kā bija)
+      // labā puse ar caurumu šahtai
       const seg1W = holeL - rightStartX;
       if (seg1W > 12) this.addPlatform(rightStartX, y, seg1W, this.THICK);
 
@@ -163,7 +163,7 @@ class Stage1 extends Phaser.Scene {
     this.extinguishers = this.physics.add.group();
     this.slots = [];
 
-    const spots = this.makeSpotsPortrait(W); // <-- jauna shēma (kreisi + pa labi)
+    const spots = this.makeSpotsPortrait(W);
 
     spots.forEach(s => {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
@@ -602,12 +602,16 @@ class Stage1 extends Phaser.Scene {
     }
   }
 
-  // --- JAUNĀ SHĒMA: kreisā šaurā mala + labā puse;
+  // --- Shēma: kreisā šaurā mala + labā puse;
   //     1. stāvā (apakšā) tikai 1 aparāts pa labi;
   //     “otrā” vieta pāriet uz augšējo stāvu -> tur 3 kopā
+  //     + TOP kreisais pārbīdīts, lai netraucē UI (Gatavs/Laiks)
   makeSpotsPortrait(W) {
     // kreisā šaurā maliņa (uz mazās platformas)
     const xLeft = 62;
+
+    // TOP kreisais aparāts pabīdīts pa labi (kā tavā bildē)
+    const xLeftTop = 120;
 
     // labā puse (prom no šahtas)
     const xRight = Math.round(W * 0.90);
@@ -615,10 +619,9 @@ class Stage1 extends Phaser.Scene {
     // papildus trešais augšā (mazliet pa kreisi no labā, lai nebūtu pārklāšanās)
     const xTopExtra = Math.round(W * 0.80);
 
-    // floor: 0 = augšā, 4 = apakšā
     return [
       // TOP (3 gab.)
-      { floor: 0, x: xLeft },
+      { floor: 0, x: xLeftTop },
       { floor: 0, x: xRight },
       { floor: 0, x: xTopExtra },
 
