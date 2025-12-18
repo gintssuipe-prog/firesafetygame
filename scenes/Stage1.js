@@ -26,8 +26,9 @@ class Stage1 extends Phaser.Scene {
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
-    // ✅ FONS PILNĪGI MELNS
-    this.cameras.main.setBackgroundColor("#000000");
+    // ✅ fons zilgani tumšs (gaišāks nekā iepriekš)
+    this.cameras.main.setBackgroundColor("#101a24");
+
     this.physics.world.gravity.y = 900;
 
     // Slāņi
