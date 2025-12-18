@@ -170,7 +170,9 @@ class Stage1 extends Phaser.Scene {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
-      const stickerY = extY - 24;
+      // ✅ UZLĪME AUGSTĀK, LAI NENOSEDZAS AR APARĀTU
+      const stickerY = extY - 54;
+
       const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
         .setStrokeStyle(2, 0xff6b6b, 0.9)
         .setDepth(this.DEPTH.stickers);
@@ -495,7 +497,7 @@ class Stage1 extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
+    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
 
     this.add.text(W / 2, 260, "Līmenis pabeigts!", {
       fontFamily: "Arial",
