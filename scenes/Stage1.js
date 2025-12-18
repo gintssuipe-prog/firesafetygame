@@ -92,7 +92,7 @@ class Stage1 extends Phaser.Scene {
 
     // ---- BUSS ----
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
-    this.BUS.x = 0; // ✅ pie pašas malas
+    this.BUS.x = 0; // pie pašas malas
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
 
     const busRect = this.add.rectangle(
@@ -111,20 +111,24 @@ class Stage1 extends Phaser.Scene {
       fontStyle: "bold"
     }).setOrigin(0.5, 0).setDepth(this.DEPTH.bus + 1);
 
-    // ✅ RITENIS (aizmugures)
-    // novietojums: pie bussa apakšas, nedaudz ārā no korpusa
+    // ✅ RITENIS (aizmugures) — NOLAISTS ZEMĀK
+    // Ideja: ritenis ir zem bussa, tuvu zilajai grīdai,
+    // bet nedrīkst iebraukt pogu zonā.
     const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
-    const wheelY = this.BUS.y + this.BUS.h - 8;
 
-    // riepa
+    // zem bussa + clamp uz spēles laukuma apakšu
+    const wantedWheelY = this.BUS.y + this.BUS.h + 16;
+    const wheelY = Math.min(this.playH - 12, wantedWheelY);
+
+    // riepa (zem korpusa)
     this.add.circle(wheelX, wheelY, 20, 0x1a1a1a, 1)
       .setStrokeStyle(3, 0x3a3a3a, 1)
-      .setDepth(this.DEPTH.bus - 1);
+      .setDepth(this.DEPTH.bus - 2);
 
     // disks
     this.add.circle(wheelX, wheelY, 10, 0x8a8a8a, 1)
       .setStrokeStyle(2, 0x2a2a2a, 1)
-      .setDepth(this.DEPTH.bus);
+      .setDepth(this.DEPTH.bus - 1);
 
     // bus “zona”
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
@@ -572,10 +576,8 @@ class Stage1 extends Phaser.Scene {
 
     const shell = this.add.rectangle(0, 0, 24, 38, 0xff4040).setStrokeStyle(2, 0x7a0a0a);
 
-    // pelēks rokturis
+    // pelēks rokturis + slīps uzgalis
     const handleBase = this.add.rectangle(0, -24, 16, 10, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
-
-    // slīps uzgalis
     const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
