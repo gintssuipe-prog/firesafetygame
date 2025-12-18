@@ -1,6 +1,6 @@
 // Stage1.js
 // Piezīme: ja pēc izmaiņām “it kā nesanāk”, visticamāk kešs.
-// Atver: https://gintssuipe-prog.github.io/firesafetygame/?v=20251219_1
+// Atver: https://gintssuipe-prog.github.io/firesafetygame/?v=20251219_4
 
 export default class Stage1 extends Phaser.Scene {
   constructor() {
@@ -30,7 +30,7 @@ export default class Stage1 extends Phaser.Scene {
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
-    // fons (zilgans, nedaudz gaišāks)
+    // fons
     this.cameras.main.setBackgroundColor("#101a24");
 
     this.physics.world.gravity.y = 900;
@@ -50,7 +50,6 @@ export default class Stage1 extends Phaser.Scene {
     };
 
     // ---- Grīdas (5 stāvi) ----
-    // Pārbīdam spēli uz leju + samazinām “pagrabstāvu”
     const topY = 130;
     const bottomY = this.playH - 35;
 
@@ -222,15 +221,12 @@ export default class Stage1 extends Phaser.Scene {
       const ex = this.makeExtinguisher(s.x, extY, "NOK");
       ex.setDepth(this.DEPTH.ext);
 
-      // dati
       ex.setData("held", false);
       ex.setData("slotRef", null);
       ex.setData("inBus", false);
       ex.setData("busIndex", -1);
 
-      // ✅ GALVENAIS LABOJUMS: uzreiz pēc izveides uzliek NOK stilu (sarkans fons + balts teksts)
       this.setExtState(ex, "NOK");
-
       this.extinguishers.add(ex);
     });
 
@@ -642,7 +638,7 @@ export default class Stage1 extends Phaser.Scene {
     const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
-    // badge (krāsu uzliek setExtState)
+    // badge (krāsu/alpha uzliek setExtState)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14).setAlpha(0.9);
 
     const txt = this.add
@@ -663,14 +659,14 @@ export default class Stage1 extends Phaser.Scene {
     c.setData("txt", txt);
     c.setData("badge", badge);
 
-    // ✅ DROŠĪBAS TĪKLS: pat ja kāds aizmirst izsaukt pēc izveides, vizuāli uzreiz nav “melns”
-    // (create() joprojām izsauc this.setExtState(ex,"NOK") — tas ir pareizi un skaidri)
+    // drošības tīkls
     this.setExtState(c, "NOK");
 
     return c;
   }
 
-  // ✅ NOK: sarkans fons + balts teksts (OK: zaļš fons + tumšs teksts)
+  // Teksts vienmēr balts.
+  // NOK: bez fona, OK: tumšāks zaļš fons.
   setExtState(ext, state) {
     ext.setData("state", state);
     ext.getData("txt").setText(state);
@@ -678,12 +674,15 @@ export default class Stage1 extends Phaser.Scene {
     const badge = ext.getData("badge");
     const txt = ext.getData("txt");
 
+    txt.setColor("#ffffff");
+
     if (state === "OK") {
-      badge.setFillStyle(0x00ff66).setAlpha(0.9);
-      txt.setColor("#0b0f14");
+      // ✅ tumšāks zaļais (labāks kontrasts ar balto tekstu)
+      badge.setFillStyle(0x00b84a).setAlpha(0.92);
     } else {
-      badge.setFillStyle(0xff4040).setAlpha(0.95);
-      txt.setColor("#ffffff");
+      // NOK: fons neredzams
+      badge.setAlpha(0);
+      badge.setFillStyle(0xff4040); // drošībai, ja alpha kādreiz pacelsi
     }
   }
 
