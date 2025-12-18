@@ -202,11 +202,16 @@ class Stage1 extends Phaser.Scene {
 
       const ex = this.makeExtinguisher(s.x, extY, "NOK");
       ex.setDepth(this.DEPTH.ext);
-      ex.setData("state", "NOK");
+
+      // dati
       ex.setData("held", false);
       ex.setData("slotRef", null);
       ex.setData("inBus", false);
       ex.setData("busIndex", -1);
+
+      // ✅ ŠIS IR GALVENAIS LABOJUMS:
+      // uzreiz uzliek NOK STILU (sarkans fons + balts teksts)
+      this.setExtState(ex, "NOK");
 
       this.extinguishers.add(ex);
     });
@@ -581,6 +586,7 @@ class Stage1 extends Phaser.Scene {
     const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
+    // badge (krāsu uzliek setExtState)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14).setAlpha(0.9);
 
     const txt = this.add.text(0, 7, label, {
@@ -614,7 +620,7 @@ class Stage1 extends Phaser.Scene {
       badge.setFillStyle(0x00ff66).setAlpha(0.9);
       txt.setColor("#0b0f14");
     } else {
-      badge.setFillStyle(0xff4040).setAlpha(0.95); // tā pati sarkanā kā korpusam
+      badge.setFillStyle(0xff4040).setAlpha(0.95); // sarkans fons NOK
       txt.setColor("#ffffff");
     }
   }
