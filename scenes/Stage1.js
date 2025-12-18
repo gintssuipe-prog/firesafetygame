@@ -1,4 +1,8 @@
-class Stage1 extends Phaser.Scene {
+// Stage1.js
+// Piezīme: ja pēc izmaiņām “it kā nesanāk”, visticamāk kešs.
+// Atver: https://gintssuipe-prog.github.io/firesafetygame/?v=20251219_1
+
+export default class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
 
@@ -95,21 +99,27 @@ class Stage1 extends Phaser.Scene {
     this.BUS.x = 0; // pie pašas malas
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
 
-    const busRect = this.add.rectangle(
-      this.BUS.x + this.BUS.w / 2,
-      this.BUS.y + this.BUS.h / 2,
-      this.BUS.w,
-      this.BUS.h,
-      0xe9edf2
-    ).setStrokeStyle(4, 0xc7ced8).setDepth(this.DEPTH.bus);
+    const busRect = this.add
+      .rectangle(
+        this.BUS.x + this.BUS.w / 2,
+        this.BUS.y + this.BUS.h / 2,
+        this.BUS.w,
+        this.BUS.h,
+        0xe9edf2
+      )
+      .setStrokeStyle(4, 0xc7ced8)
+      .setDepth(this.DEPTH.bus);
 
     // BUSS uzraksts
-    this.add.text(busRect.x, this.BUS.y + 8, "BUSS", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#0b0f14",
-      fontStyle: "bold"
-    }).setOrigin(0.5, 0).setDepth(this.DEPTH.bus + 1);
+    this.add
+      .text(busRect.x, this.BUS.y + 8, "BUSS", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#0b0f14",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(this.DEPTH.bus + 1);
 
     // ✅ RITENIS (aizmugures) — NOLAISTS ZEMĀK
     const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
@@ -118,12 +128,14 @@ class Stage1 extends Phaser.Scene {
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
     // riepa (zem korpusa)
-    this.add.circle(wheelX, wheelY, 20, 0x1a1a1a, 1)
+    this.add
+      .circle(wheelX, wheelY, 20, 0x1a1a1a, 1)
       .setStrokeStyle(3, 0x3a3a3a, 1)
       .setDepth(this.DEPTH.bus - 2);
 
     // disks
-    this.add.circle(wheelX, wheelY, 10, 0x8a8a8a, 1)
+    this.add
+      .circle(wheelX, wheelY, 10, 0x8a8a8a, 1)
       .setStrokeStyle(2, 0x2a2a2a, 1)
       .setDepth(this.DEPTH.bus - 1);
 
@@ -132,8 +144,10 @@ class Stage1 extends Phaser.Scene {
 
     // 6 vietas busā
     this.busSlots = [];
-    const cols = 3, rows = 2;
-    const padX = 18, padY = 28;
+    const cols = 3,
+      rows = 2;
+    const padX = 18,
+      padY = 28;
     const cellW = (this.BUS.w - padX * 2) / cols;
     const cellH = (this.BUS.h - padY * 2) / rows;
     for (let r = 0; r < rows; r++) {
@@ -141,7 +155,8 @@ class Stage1 extends Phaser.Scene {
         const x = this.BUS.x + padX + c * cellW + cellW / 2;
         const y = this.BUS.y + padY + r * cellH + cellH / 2;
         this.busSlots.push({ x, y, used: false });
-        this.add.rectangle(x, y, 18, 18, 0x0b0f14, 0.08)
+        this.add
+          .rectangle(x, y, 18, 18, 0x0b0f14, 0.08)
           .setStrokeStyle(1, 0x0b0f14, 0.18)
           .setDepth(this.DEPTH.bus);
       }
@@ -155,13 +170,16 @@ class Stage1 extends Phaser.Scene {
     this.elevatorSpeed = 58;
     this.elevatorDir = -1;
 
-    this.elevator = this.add.rectangle(
-      this.elevatorX,
-      this.elevatorMaxSurfaceY + this.THICK / 2,
-      this.elevatorWidth,
-      this.THICK,
-      0x555555
-    ).setStrokeStyle(2, 0x1a1f26).setDepth(this.DEPTH.elevator);
+    this.elevator = this.add
+      .rectangle(
+        this.elevatorX,
+        this.elevatorMaxSurfaceY + this.THICK / 2,
+        this.elevatorWidth,
+        this.THICK,
+        0x555555
+      )
+      .setStrokeStyle(2, 0x1a1f26)
+      .setDepth(this.DEPTH.elevator);
 
     this.physics.add.existing(this.elevator);
     this.elevator.body.setAllowGravity(false);
@@ -186,14 +204,15 @@ class Stage1 extends Phaser.Scene {
 
     const spots = this.makeSpotsPortrait(W);
 
-    spots.forEach(s => {
+    spots.forEach((s) => {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
       // uzlīme virs aparāta
       const stickerY = extY - 54;
 
-      const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
+      const sticker = this.add
+        .rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
         .setStrokeStyle(2, 0xff6b6b, 0.9)
         .setDepth(this.DEPTH.stickers);
 
@@ -209,8 +228,7 @@ class Stage1 extends Phaser.Scene {
       ex.setData("inBus", false);
       ex.setData("busIndex", -1);
 
-      // ✅ ŠIS IR GALVENAIS LABOJUMS:
-      // uzreiz uzliek NOK STILU (sarkans fons + balts teksts)
+      // ✅ GALVENAIS LABOJUMS: uzreiz pēc izveides uzliek NOK stilu (sarkans fons + balts teksts)
       this.setExtState(ex, "NOK");
 
       this.extinguishers.add(ex);
@@ -222,11 +240,11 @@ class Stage1 extends Phaser.Scene {
     this.totalCount = this.slots.length;
 
     // ---- UI ----
-    this.readyText = this.add.text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle())
+    this.readyText = this.add
+      .text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle())
       .setDepth(this.DEPTH.ui);
 
-    this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle())
-      .setDepth(this.DEPTH.ui);
+    this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle()).setDepth(this.DEPTH.ui);
 
     // ---- Kontroles (telefons) ----
     this.createPortraitControls();
@@ -251,8 +269,14 @@ class Stage1 extends Phaser.Scene {
     const maxCenterY = this.elevatorMaxSurfaceY + this.THICK / 2;
 
     this.elevator.y += this.elevatorSpeed * dt * this.elevatorDir;
-    if (this.elevator.y <= minCenterY) { this.elevator.y = minCenterY; this.elevatorDir = 1; }
-    if (this.elevator.y >= maxCenterY) { this.elevator.y = maxCenterY; this.elevatorDir = -1; }
+    if (this.elevator.y <= minCenterY) {
+      this.elevator.y = minCenterY;
+      this.elevatorDir = 1;
+    }
+    if (this.elevator.y >= maxCenterY) {
+      this.elevator.y = maxCenterY;
+      this.elevatorDir = -1;
+    }
 
     this.elevator.body.updateFromGameObject();
     const elevDeltaY = this.elevator.y - this.prevElevY;
@@ -320,25 +344,31 @@ class Stage1 extends Phaser.Scene {
     const areaTop = this.playH;
     const areaH = this.controlsH;
 
-    this.add.rectangle(W / 2, areaTop + areaH / 2, W, areaH, 0x081018, 0.95)
+    this.add
+      .rectangle(W / 2, areaTop + areaH / 2, W, areaH, 0x081018, 0.95)
       .setScrollFactor(0)
       .setDepth(this.DEPTH.controls);
 
     const R = 46;
 
     const mkBtn = (cx, cy, label) => {
-      const circle = this.add.circle(cx, cy, R, 0x142334, 1)
+      const circle = this.add
+        .circle(cx, cy, R, 0x142334, 1)
         .setStrokeStyle(3, 0x2a5a7a)
         .setScrollFactor(0)
         .setDepth(this.DEPTH.controls + 1)
         .setInteractive({ useHandCursor: true });
 
-      const t = this.add.text(cx, cy, label, {
-        fontFamily: "Arial",
-        fontSize: "26px",
-        color: "#e7edf5",
-        fontStyle: "bold"
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(this.DEPTH.controls + 2);
+      const t = this.add
+        .text(cx, cy, label, {
+          fontFamily: "Arial",
+          fontSize: "26px",
+          color: "#e7edf5",
+          fontStyle: "bold"
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(this.DEPTH.controls + 2);
 
       circle._label = t;
       return circle;
@@ -364,17 +394,38 @@ class Stage1 extends Phaser.Scene {
     };
 
     const bindHold = (btn, key) => {
-      btn.on("pointerdown", () => { this.touch[key] = true; pressIn(btn); });
-      btn.on("pointerup", () => { this.touch[key] = false; pressOut(btn); });
-      btn.on("pointerout", () => { this.touch[key] = false; pressOut(btn); });
-      btn.on("pointercancel", () => { this.touch[key] = false; pressOut(btn); });
+      btn.on("pointerdown", () => {
+        this.touch[key] = true;
+        pressIn(btn);
+      });
+      btn.on("pointerup", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
+      btn.on("pointerout", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
+      btn.on("pointercancel", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
     };
 
     const bindTap = (btn, key) => {
-      btn.on("pointerdown", () => { this.touch[key] = true; pressIn(btn); });
-      btn.on("pointerup", () => { pressOut(btn); });
-      btn.on("pointerout", () => { pressOut(btn); });
-      btn.on("pointercancel", () => { pressOut(btn); });
+      btn.on("pointerdown", () => {
+        this.touch[key] = true;
+        pressIn(btn);
+      });
+      btn.on("pointerup", () => {
+        pressOut(btn);
+      });
+      btn.on("pointerout", () => {
+        pressOut(btn);
+      });
+      btn.on("pointercancel", () => {
+        pressOut(btn);
+      });
     };
 
     bindHold(btnLeft, "left");
@@ -393,12 +444,15 @@ class Stage1 extends Phaser.Scene {
     let best = null;
     let bestD = 1e9;
 
-    this.extinguishers.getChildren().forEach(ex => {
+    this.extinguishers.getChildren().forEach((ex) => {
       if (!ex.active) return;
       if (ex.getData("held")) return;
 
       const d = Phaser.Math.Distance.Between(px, py, ex.x, ex.y);
-      if (d < 58 && d < bestD) { best = ex; bestD = d; }
+      if (d < 58 && d < bestD) {
+        best = ex;
+        bestD = d;
+      }
     });
 
     if (!best) return;
@@ -418,7 +472,7 @@ class Stage1 extends Phaser.Scene {
       if (idx >= 0 && this.busSlots[idx]) this.busSlots[idx].used = false;
       best.setData("inBus", false);
       best.setData("busIndex", -1);
-      this.busStorage = this.busStorage.filter(x => x !== best);
+      this.busStorage = this.busStorage.filter((x) => x !== best);
     }
 
     best.setData("held", true);
@@ -440,7 +494,7 @@ class Stage1 extends Phaser.Scene {
 
     // BUSS
     if (Phaser.Geom.Rectangle.Contains(this.busZone, ex.x, ex.y)) {
-      const freeIndex = this.busSlots.findIndex(s => !s.used);
+      const freeIndex = this.busSlots.findIndex((s) => !s.used);
 
       if (freeIndex === -1 || this.busStorage.length >= this.BUS_CAPACITY) {
         ex.body.enable = true;
@@ -526,18 +580,24 @@ class Stage1 extends Phaser.Scene {
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
 
-    this.add.text(W / 2, 260, "Līmenis pabeigts!", {
-      fontFamily: "Arial",
-      fontSize: "34px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 1);
+    this.add
+      .text(W / 2, 260, "Līmenis pabeigts!", {
+        fontFamily: "Arial",
+        fontSize: "34px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5)
+      .setDepth(this.DEPTH.overlay + 1);
 
-    this.add.text(W / 2, 320, `Jūsu laiks: ${mm} min ${ss} sek`, {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#e7edf5"
-    }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 1);
+    this.add
+      .text(W / 2, 320, `Jūsu laiks: ${mm} min ${ss} sek`, {
+        fontFamily: "Arial",
+        fontSize: "20px",
+        color: "#e7edf5"
+      })
+      .setOrigin(0.5)
+      .setDepth(this.DEPTH.overlay + 1);
   }
 
   // ---------------- Drawing helpers ----------------
@@ -552,13 +612,9 @@ class Stage1 extends Phaser.Scene {
   }
 
   addPlatform(xLeft, surfaceY, width, thickness) {
-    const r = this.add.rectangle(
-      xLeft + width / 2,
-      surfaceY + thickness / 2,
-      width,
-      thickness,
-      0x0f5f7a
-    ).setStrokeStyle(2, 0x0b0f14);
+    const r = this.add
+      .rectangle(xLeft + width / 2, surfaceY + thickness / 2, width, thickness, 0x0f5f7a)
+      .setStrokeStyle(2, 0x0b0f14);
 
     r.setDepth(this.DEPTH.platforms);
     this.physics.add.existing(r, true);
@@ -589,12 +645,14 @@ class Stage1 extends Phaser.Scene {
     // badge (krāsu uzliek setExtState)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14).setAlpha(0.9);
 
-    const txt = this.add.text(0, 7, label, {
-      fontFamily: "Arial",
-      fontSize: "11px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
+    const txt = this.add
+      .text(0, 7, label, {
+        fontFamily: "Arial",
+        fontSize: "11px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
 
     c.add([shell, handleBase, nozzle, badge, txt]);
 
@@ -604,6 +662,10 @@ class Stage1 extends Phaser.Scene {
 
     c.setData("txt", txt);
     c.setData("badge", badge);
+
+    // ✅ DROŠĪBAS TĪKLS: pat ja kāds aizmirst izsaukt pēc izveides, vizuāli uzreiz nav “melns”
+    // (create() joprojām izsauc this.setExtState(ex,"NOK") — tas ir pareizi un skaidri)
+    this.setExtState(c, "NOK");
 
     return c;
   }
@@ -620,7 +682,7 @@ class Stage1 extends Phaser.Scene {
       badge.setFillStyle(0x00ff66).setAlpha(0.9);
       txt.setColor("#0b0f14");
     } else {
-      badge.setFillStyle(0xff4040).setAlpha(0.95); // sarkans fons NOK
+      badge.setFillStyle(0xff4040).setAlpha(0.95);
       txt.setColor("#ffffff");
     }
   }
@@ -628,8 +690,8 @@ class Stage1 extends Phaser.Scene {
   makeSpotsPortrait(W) {
     const xLeft = 62;
     const xLeftTop = 180;
-    const xRight = Math.round(W * 0.90);
-    const xTopExtra = Math.round(W * 0.80);
+    const xRight = Math.round(W * 0.9);
+    const xTopExtra = Math.round(W * 0.8);
 
     return [
       { floor: 0, x: xLeftTop },
