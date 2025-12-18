@@ -112,11 +112,8 @@ class Stage1 extends Phaser.Scene {
     }).setOrigin(0.5, 0).setDepth(this.DEPTH.bus + 1);
 
     // ✅ RITENIS (aizmugures) — NOLAISTS ZEMĀK
-    // Ideja: ritenis ir zem bussa, tuvu zilajai grīdai,
-    // bet nedrīkst iebraukt pogu zonā.
     const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
 
-    // zem bussa + clamp uz spēles laukuma apakšu
     const wantedWheelY = this.BUS.y + this.BUS.h + 16;
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
@@ -304,6 +301,7 @@ class Stage1 extends Phaser.Scene {
     }
   }
 
+  // ---------------- Controls helpers ----------------
   consumeTouch(key) {
     if (this.touch[key]) {
       this.touch[key] = false;
@@ -380,6 +378,7 @@ class Stage1 extends Phaser.Scene {
     bindTap(btnDown, "down");
   }
 
+  // ---------------- Gameplay: pickup/drop ----------------
   tryPickup() {
     if (this.carrying) return;
 
@@ -536,6 +535,7 @@ class Stage1 extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(this.DEPTH.overlay + 1);
   }
 
+  // ---------------- Drawing helpers ----------------
   uiStyle() {
     return {
       fontFamily: "Arial",
@@ -602,6 +602,7 @@ class Stage1 extends Phaser.Scene {
     return c;
   }
 
+  // ✅ NOK: sarkans fons + balts teksts (OK: zaļš fons + tumšs teksts)
   setExtState(ext, state) {
     ext.setData("state", state);
     ext.getData("txt").setText(state);
@@ -613,7 +614,7 @@ class Stage1 extends Phaser.Scene {
       badge.setFillStyle(0x00ff66).setAlpha(0.9);
       txt.setColor("#0b0f14");
     } else {
-      badge.setFillStyle(0x0b0f14).setAlpha(0.9);
+      badge.setFillStyle(0xff4040).setAlpha(0.95); // tā pati sarkanā kā korpusam
       txt.setColor("#ffffff");
     }
   }
