@@ -1,4 +1,3 @@
-// stabila versija ar 3D  1
 class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
@@ -612,9 +611,9 @@ class Stage1 extends Phaser.Scene {
 
     const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // pelēks rokturis + slīps uzgalis (bez stroke)
-    const handleBase = this.add.rectangle(0, -24, 16, 10, 0x9aa6b2, 1);
-    const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2, 1);
+    // ✅ AUGŠA kā konceptā: pelēks bloks + slīps uzgalis (abi ar gradientu, bez outline)
+    const topBase = this.add.image(0, -24, "tex_extTopBase").setDisplaySize(22, 14);
+    const nozzle = this.add.image(12, -30, "tex_extTopNozzle").setDisplaySize(26, 8);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
     // badge (fons: NOK=alpha0, OK=zaļš)
@@ -629,7 +628,7 @@ class Stage1 extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    c.add([shell, handleBase, nozzle, badge, txt]);
+    c.add([shell, topBase, nozzle, badge, txt]);
 
     this.physics.add.existing(c);
     c.body.setSize(24, 38);
@@ -774,6 +773,44 @@ class Stage1 extends Phaser.Scene {
       g.addColorStop(1.0, "#8e0a0a");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
+    });
+
+    // ✅ Aparāta augšas bloks: pelēks “metāls/plastmasa” ar spīdumu (bez outline)
+    ensure("tex_extTopBase", 64, 32, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#1b2128");
+      g.addColorStop(0.25, "#7f8a95");
+      g.addColorStop(0.5, "#c8d0d8");
+      g.addColorStop(0.75, "#5e6974");
+      g.addColorStop(1.0, "#10161c");
+      ctx.fillStyle = g;
+      ctx.fillRect(10, 9, w - 20, h - 18);
+
+      // ļoti viegls “top highlight”
+      const g2 = ctx.createLinearGradient(0, 0, 0, h);
+      g2.addColorStop(0.0, "rgba(255,255,255,0.18)");
+      g2.addColorStop(0.6, "rgba(255,255,255,0)");
+      ctx.fillStyle = g2;
+      ctx.fillRect(10, 9, w - 20, h - 18);
+    });
+
+    // ✅ Aparāta uzgalis: šaurāks, tumšāks, ar spīdumu
+    ensure("tex_extTopNozzle", 64, 24, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#0f141a");
+      g.addColorStop(0.35, "#6f7a84");
+      g.addColorStop(0.55, "#aab4be");
+      g.addColorStop(1.0, "#0b1016");
+      ctx.fillStyle = g;
+      ctx.fillRect(8, 9, w - 16, 6);
+
+      const g2 = ctx.createLinearGradient(0, 0, 0, h);
+      g2.addColorStop(0.0, "rgba(255,255,255,0.16)");
+      g2.addColorStop(0.6, "rgba(255,255,255,0)");
+      ctx.fillStyle = g2;
+      ctx.fillRect(8, 8, w - 16, 8);
     });
 
     // Riepa: tumšs radial
