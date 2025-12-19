@@ -1,4 +1,4 @@
-
+// stabila versija ar 3D  1
 class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
