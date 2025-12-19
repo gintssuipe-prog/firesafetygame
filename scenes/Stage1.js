@@ -208,7 +208,6 @@ class Stage1 extends Phaser.Scene {
 
     // ---- UI ----
     this.readyText = this.add.text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle()).setDepth(this.DEPTH.ui);
-
     this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle()).setDepth(this.DEPTH.ui);
 
     // ---- Kontroles (telefons) ----
@@ -590,25 +589,28 @@ class Stage1 extends Phaser.Scene {
     const c = this.add.container(x, surfaceY);
 
     const body = this.add.image(0, -31, "tex_playerBody").setDisplaySize(30, 44);
-    const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1); // bez outline
-    const head = this.add.image(0, -58, "tex_head").setDisplaySize(22, 22); // “lode”
+    const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1);
+    const head = this.add.image(0, -58, "tex_head").setDisplaySize(22, 22);
 
     c.add([body, stripe, head]);
     return c;
   }
 
   makeExtinguisher(x, y, label) {
-    const c = this.add.container(x, y);
+    // pixel-snapping container pozīcijai
+    const c = this.add.container(Math.round(x), Math.round(y));
 
     const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // ✅ pelēkā augša ar GRADIENTU (Image, nevis rectangle)
-    const handleBase = this.add.image(0, -24, "tex_extHandle").setDisplaySize(16, 10);
+    // ✅ pārklājam 1px, lai NEBŪTU šķirbas
+    // (ielaižam pelēko daļu mazliet “iekšā” sarkanajā korpusā)
+    const handleBase = this.add.image(0, -23, "tex_extHandle").setDisplaySize(16, 10);
+    handleBase.setPosition(Math.round(handleBase.x), Math.round(handleBase.y));
 
-    const nozzle = this.add.image(10, -28, "tex_extNozzle").setDisplaySize(20, 7);
+    const nozzle = this.add.image(10, -27, "tex_extNozzle").setDisplaySize(20, 7);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
+    nozzle.setPosition(Math.round(nozzle.x), Math.round(nozzle.y));
 
-    // badge (fons: NOK=alpha0, OK=zaļš)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14, 0.9);
 
     const txt = this.add
@@ -629,14 +631,11 @@ class Stage1 extends Phaser.Scene {
     c.setData("txt", txt);
     c.setData("badge", badge);
 
-    // drošības tīkls
     this.setExtState(c, "NOK");
-
     return c;
   }
 
   // Teksts vienmēr balts.
-  // NOK: bez fona (alpha 0), OK: tumšāks zaļš fons (alpha atpakaļ!)
   setExtState(ext, state) {
     ext.setData("state", state);
     ext.getData("txt").setText(state);
@@ -689,7 +688,6 @@ class Stage1 extends Phaser.Scene {
       tx.refresh();
     };
 
-    // Platforma: horizontāls “cilindra” spīdums
     ensure("tex_platform", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#1a8fb3");
@@ -700,7 +698,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Lifts: metālisks
     ensure("tex_elevator", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#8b949e");
@@ -710,7 +707,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Buss: gaišs “plastmasa/metāls”
     ensure("tex_bus", 128, 64, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#ffffff");
@@ -728,7 +724,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
     });
 
-    // Spēlētāja ķermenis
     ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#050607");
@@ -738,7 +733,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Galva: “lode”
     ensure("tex_head", 32, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -755,7 +749,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Aparāta korpuss: sarkans “cilindrs”
     ensure("tex_extShell", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#8e0a0a");
@@ -766,11 +759,10 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // ✅ JAUNS: pelēkais rokturis ar metālisku gradientu + highlight
+    // pelēkais rokturis
     ensure("tex_extHandle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
-      // metālisks (horizontāls)
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#2a3138");
       g.addColorStop(0.25, "#9aa6b2");
@@ -781,23 +773,20 @@ class Stage1 extends Phaser.Scene {
       ctx.fillStyle = g;
       ctx.fillRect(0, 6, w, h - 12);
 
-      // plāna highlight josla augšpusē
       const hl = ctx.createLinearGradient(0, 0, 0, h);
       hl.addColorStop(0.0, "rgba(255,255,255,0.30)");
       hl.addColorStop(0.6, "rgba(255,255,255,0)");
       ctx.fillStyle = hl;
       ctx.fillRect(0, 6, w, Math.max(2, Math.round((h - 12) * 0.45)));
 
-      // apakša nedaudz tumšāka
       ctx.fillStyle = "rgba(0,0,0,0.12)";
       ctx.fillRect(0, 6 + Math.round((h - 12) * 0.65), w, Math.round((h - 12) * 0.35));
     });
 
-    // ✅ JAUNS: pelēkais uzgalis ar metālisku gradientu (garenisks)
+    // pelēkais uzgalis
     ensure("tex_extNozzle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
-      // garenisks metāls (pa X)
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#1c232a");
       g.addColorStop(0.35, "#b4c0cc");
@@ -808,11 +797,9 @@ class Stage1 extends Phaser.Scene {
       ctx.fillStyle = g;
       ctx.fillRect(0, 10, w, h - 20);
 
-      // neliels “izvirzījums” galā (tumšāks cap)
       ctx.fillStyle = "rgba(0,0,0,0.18)";
       ctx.fillRect(w - 10, 10, 10, h - 20);
 
-      // highlight slīpi (fake spīdums)
       const hl = ctx.createLinearGradient(0, 0, w, h);
       hl.addColorStop(0.0, "rgba(255,255,255,0.18)");
       hl.addColorStop(0.5, "rgba(255,255,255,0)");
@@ -820,7 +807,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 10, w, h - 20);
     });
 
-    // Riepa: tumšs radial
     ensure("tex_wheel", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -837,7 +823,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Disks: metālisks radial
     ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
