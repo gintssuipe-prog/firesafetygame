@@ -4,7 +4,7 @@ class Intro extends Phaser.Scene {
   }
 
   preload() {
-    // 🔴 INTRO BILDE (ieliec failu, piem. assets/intro.png)
+    // 🔴 INTRO BILDE (ieliec failu: assets/intro.png)
     this.load.image("introImage", "assets/intro.png");
   }
 
@@ -30,7 +30,7 @@ class Intro extends Phaser.Scene {
     // ===============================
     // MELNA JOSLA APakšā
     // ===============================
-    const bottomH = Math.max(120, H - imgBottomY);
+    const bottomH = Math.max(140, H - imgBottomY);
 
     this.add
       .rectangle(W / 2, imgBottomY + bottomH / 2, W, bottomH, 0x000000, 1)
@@ -42,7 +42,7 @@ class Intro extends Phaser.Scene {
     const btnY = imgBottomY + bottomH / 2;
 
     const btnBg = this.add
-      .rectangle(W / 2, btnY, 200, 56, 0x1d3a55, 1)
+      .rectangle(W / 2, btnY, 220, 60, 0x1d3a55, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
@@ -52,4 +52,27 @@ class Intro extends Phaser.Scene {
         color: "#ffffff",
         fontStyle: "bold"
       })
-      .s
+      .setOrigin(0.5);
+
+    // hover / press efekts
+    btnBg.on("pointerover", () => btnBg.setFillStyle(0x275a80));
+    btnBg.on("pointerout", () => btnBg.setFillStyle(0x1d3a55));
+
+    btnBg.on("pointerdown", () => {
+      btnBg.setFillStyle(0x163047);
+      this.startGame();
+    });
+
+    // ENTER uz klaviatūras
+    this.input.keyboard.once("keydown-ENTER", () => {
+      this.startGame();
+    });
+  }
+
+  startGame() {
+    this.scene.start("MainMenu");
+  }
+}
+
+// ✅ drošībai: nodrošinām, ka Intro ir globāls (lai main.js redzētu)
+window.Intro = Intro;
