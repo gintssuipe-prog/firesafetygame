@@ -4,8 +4,8 @@ class Intro extends Phaser.Scene {
   }
 
   preload() {
-    // 🔴 INTRO BILDE (ieliec failu: assets/intro.png)
-    this.load.image("introImage", "assets/intro.png");
+    // ielādē intro bildi
+    this.load.image("introBg", "assets/img/intro.png");
   }
 
   create() {
@@ -15,64 +15,48 @@ class Intro extends Phaser.Scene {
     // fons
     this.cameras.main.setBackgroundColor("#000000");
 
-    // ===============================
-    // INTRO BILDE (augšējā daļa)
-    // ===============================
-    const img = this.add.image(W / 2, 0, "introImage");
+    // ===== INTRO BILDE (augšā) =====
+    const img = this.add.image(W / 2, 0, "introBg");
     img.setOrigin(0.5, 0);
 
-    // mērogojam, lai ietilptu platumā
+    // mērogojam pēc platuma
     const scale = W / img.width;
     img.setScale(scale);
 
-    const imgBottomY = img.displayHeight;
+    const imgHeight = img.displayHeight;
 
-    // ===============================
-    // MELNA JOSLA APakšā
-    // ===============================
-    const bottomH = Math.max(140, H - imgBottomY);
-
+    // ===== MELNA ZONA APKŠĀ =====
     this.add
-      .rectangle(W / 2, imgBottomY + bottomH / 2, W, bottomH, 0x000000, 1)
-      .setOrigin(0.5);
+      .rectangle(W / 2, imgHeight + (H - imgHeight) / 2, W, H - imgHeight, 0x000000)
+      .setDepth(-1);
 
-    // ===============================
-    // START POGA
-    // ===============================
-    const btnY = imgBottomY + bottomH / 2;
+    // ===== START POGA =====
+    const btnY = imgHeight + (H - imgHeight) / 2;
 
     const btnBg = this.add
-      .rectangle(W / 2, btnY, 220, 60, 0x1d3a55, 1)
+      .rectangle(W / 2, btnY, 180, 56, 0x1f3b52)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
       .text(W / 2, btnY, "START", {
         fontFamily: "Arial",
-        fontSize: "28px",
+        fontSize: "24px",
         color: "#ffffff",
         fontStyle: "bold"
       })
       .setOrigin(0.5);
 
-    // hover / press efekts
-    btnBg.on("pointerover", () => btnBg.setFillStyle(0x275a80));
-    btnBg.on("pointerout", () => btnBg.setFillStyle(0x1d3a55));
+    // hover / press efekti
+    btnBg.on("pointerover", () => btnBg.setFillStyle(0x2c5675));
+    btnBg.on("pointerout", () => btnBg.setFillStyle(0x1f3b52));
 
-    btnBg.on("pointerdown", () => {
-      btnBg.setFillStyle(0x163047);
-      this.startGame();
-    });
+    const startGame = () => {
+      this.scene.start("MainMenu");
+    };
 
-    // ENTER uz klaviatūras
-    this.input.keyboard.once("keydown-ENTER", () => {
-      this.startGame();
-    });
-  }
+    btnBg.on("pointerdown", startGame);
 
-  startGame() {
-    this.scene.start("MainMenu");
+    // ENTER arī strādā
+    this.input.keyboard.once("keydown-ENTER", startGame);
   }
 }
-
-// ✅ drošībai: nodrošinām, ka Intro ir globāls (lai main.js redzētu)
-window.Intro = Intro;
