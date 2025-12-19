@@ -26,7 +26,7 @@ class Stage1 extends Phaser.Scene {
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
-    // fons (zilgans, nedaudz gaišāks)
+    // fons
     this.cameras.main.setBackgroundColor("#101a24");
 
     this.physics.world.gravity.y = 900;
@@ -45,8 +45,10 @@ class Stage1 extends Phaser.Scene {
       overlay: 400
     };
 
+    // ✅ uzģenerējam gradient-tekstūras (vienreiz)
+    this.buildGradientTextures();
+
     // ---- Grīdas (5 stāvi) ----
-    // Pārbīdam spēli uz leju + samazinām “pagrabstāvu”
     const topY = 130;
     const bottomY = this.playH - 35;
 
@@ -57,7 +59,7 @@ class Stage1 extends Phaser.Scene {
     }
     this.THICK = 18;
 
-    // ---- Platformas ----
+    // ---- Platformas (tagad: Image + static body) ----
     this.platforms = this.physics.add.staticGroup();
 
     // 1. stāvs pilnā platumā
@@ -90,25 +92,18 @@ class Stage1 extends Phaser.Scene {
       if (seg2W > 12) this.addPlatform(seg2X, y, seg2W, this.THICK);
     }
 
-    // ---- BUSS ----
+    // ---- BUSS (tagad: gradient Image) ----
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
-    this.BUS.x = 0; // pie pašas malas
+    this.BUS.x = 0;
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
 
-    const busRect = this.add
-      .rectangle(
-        this.BUS.x + this.BUS.w / 2,
-        this.BUS.y + this.BUS.h / 2,
-        this.BUS.w,
-        this.BUS.h,
-        0xe9edf2
-      )
-      .setStrokeStyle(4, 0xc7ced8)
+    const busImg = this.add
+      .image(this.BUS.x + this.BUS.w / 2, this.BUS.y + this.BUS.h / 2, "tex_bus")
+      .setDisplaySize(this.BUS.w, this.BUS.h)
       .setDepth(this.DEPTH.bus);
 
-    // BUSS uzraksts
     this.add
-      .text(busRect.x, this.BUS.y + 8, "BUSS", {
+      .text(busImg.x, this.BUS.y + 8, "BUSS", {
         fontFamily: "Arial",
         fontSize: "16px",
         color: "#0b0f14",
@@ -117,28 +112,25 @@ class Stage1 extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(this.DEPTH.bus + 1);
 
-    // ✅ RITENIS (aizmugures) — NOLAISTS ZEMĀK
+    // ✅ RITENIS (gradient “riepa” + “disks”)
     const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
-
     const wantedWheelY = this.BUS.y + this.BUS.h + 16;
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
-    // riepa (zem korpusa)
     this.add
-      .circle(wheelX, wheelY, 20, 0x1a1a1a, 1)
-      .setStrokeStyle(3, 0x3a3a3a, 1)
+      .image(wheelX, wheelY, "tex_wheel")
+      .setDisplaySize(42, 42)
       .setDepth(this.DEPTH.bus - 2);
 
-    // disks
     this.add
-      .circle(wheelX, wheelY, 10, 0x8a8a8a, 1)
-      .setStrokeStyle(2, 0x2a2a2a, 1)
+      .image(wheelX, wheelY, "tex_wheelHub")
+      .setDisplaySize(22, 22)
       .setDepth(this.DEPTH.bus - 1);
 
     // bus “zona”
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
 
-    // 6 vietas busā
+    // 6 vietas busā (bez stroke)
     this.busSlots = [];
     const cols = 3,
       rows = 2;
@@ -151,14 +143,11 @@ class Stage1 extends Phaser.Scene {
         const x = this.BUS.x + padX + c * cellW + cellW / 2;
         const y = this.BUS.y + padY + r * cellH + cellH / 2;
         this.busSlots.push({ x, y, used: false });
-        this.add
-          .rectangle(x, y, 18, 18, 0x0b0f14, 0.08)
-          .setStrokeStyle(1, 0x0b0f14, 0.18)
-          .setDepth(this.DEPTH.bus);
+        this.add.rectangle(x, y, 18, 18, 0x0b0f14, 0.12).setDepth(this.DEPTH.bus);
       }
     }
 
-    // ---- LIFTS platforma ----
+    // ---- LIFTS platforma (gradient Image + dynamic body) ----
     const topOvershoot = 26;
     this.elevatorMinSurfaceY = this.FLOORS_Y[0] - topOvershoot;
     this.elevatorMaxSurfaceY = this.FLOORS_Y[4];
@@ -167,14 +156,8 @@ class Stage1 extends Phaser.Scene {
     this.elevatorDir = -1;
 
     this.elevator = this.add
-      .rectangle(
-        this.elevatorX,
-        this.elevatorMaxSurfaceY + this.THICK / 2,
-        this.elevatorWidth,
-        this.THICK,
-        0x555555
-      )
-      .setStrokeStyle(2, 0x1a1f26)
+      .image(this.elevatorX, this.elevatorMaxSurfaceY + this.THICK / 2, "tex_elevator")
+      .setDisplaySize(this.elevatorWidth, this.THICK)
       .setDepth(this.DEPTH.elevator);
 
     this.physics.add.existing(this.elevator);
@@ -204,12 +187,10 @@ class Stage1 extends Phaser.Scene {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
-      // uzlīme virs aparāta
+      // uzlīme virs aparāta (bez kontūras)
       const stickerY = extY - 54;
-
       const sticker = this.add
         .rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
-        .setStrokeStyle(2, 0xff6b6b, 0.9)
         .setDepth(this.DEPTH.stickers);
 
       const slot = { x: s.x, y: extY, sticker, used: false };
@@ -218,15 +199,12 @@ class Stage1 extends Phaser.Scene {
       const ex = this.makeExtinguisher(s.x, extY, "NOK");
       ex.setDepth(this.DEPTH.ext);
 
-      // dati
       ex.setData("held", false);
       ex.setData("slotRef", null);
       ex.setData("inBus", false);
       ex.setData("busIndex", -1);
 
-      // svarīgi: uzreiz uzliek sākotnējo stāvokli (NOK bez fona, balts teksts)
       this.setExtState(ex, "NOK");
-
       this.extinguishers.add(ex);
     });
 
@@ -236,7 +214,10 @@ class Stage1 extends Phaser.Scene {
     this.totalCount = this.slots.length;
 
     // ---- UI ----
-    this.readyText = this.add.text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle()).setDepth(this.DEPTH.ui);
+    this.readyText = this.add
+      .text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle())
+      .setDepth(this.DEPTH.ui);
+
     this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle()).setDepth(this.DEPTH.ui);
 
     // ---- Kontroles (telefons) ----
@@ -347,7 +328,6 @@ class Stage1 extends Phaser.Scene {
     const mkBtn = (cx, cy, label) => {
       const circle = this.add
         .circle(cx, cy, R, 0x142334, 1)
-        .setStrokeStyle(3, 0x2a5a7a)
         .setScrollFactor(0)
         .setDepth(this.DEPTH.controls + 1)
         .setInteractive({ useHandCursor: true });
@@ -604,22 +584,23 @@ class Stage1 extends Phaser.Scene {
     };
   }
 
+  // ✅ Platforma kā gradient-Image + static body
   addPlatform(xLeft, surfaceY, width, thickness) {
-    const r = this.add
-      .rectangle(xLeft + width / 2, surfaceY + thickness / 2, width, thickness, 0x0f5f7a)
-      .setStrokeStyle(2, 0x0b0f14);
+    const img = this.add
+      .image(xLeft + width / 2, surfaceY + thickness / 2, "tex_platform")
+      .setDisplaySize(width, thickness)
+      .setDepth(this.DEPTH.platforms);
 
-    r.setDepth(this.DEPTH.platforms);
-    this.physics.add.existing(r, true);
-    this.platforms.add(r);
+    this.physics.add.existing(img, true);
+    this.platforms.add(img);
   }
 
   makePlayer(x, surfaceY) {
     const c = this.add.container(x, surfaceY);
 
-    const body = this.add.rectangle(0, -31, 30, 44, 0x0b0b0b);
-    const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66);
-    const head = this.add.circle(0, -58, 11, 0xffe2b8);
+    const body = this.add.image(0, -31, "tex_playerBody").setDisplaySize(30, 44);
+    const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1); // bez outline
+    const head = this.add.image(0, -58, "tex_head").setDisplaySize(22, 22); // “lode”
 
     c.add([body, stripe, head]);
     return c;
@@ -628,15 +609,15 @@ class Stage1 extends Phaser.Scene {
   makeExtinguisher(x, y, label) {
     const c = this.add.container(x, y);
 
-    const shell = this.add.rectangle(0, 0, 24, 38, 0xff4040).setStrokeStyle(2, 0x7a0a0a);
+    const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // pelēks rokturis + slīps uzgalis
-    const handleBase = this.add.rectangle(0, -24, 16, 10, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
-    const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2).setStrokeStyle(2, 0x3a4550);
+    // pelēks rokturis + slīps uzgalis (bez stroke)
+    const handleBase = this.add.rectangle(0, -24, 16, 10, 0x9aa6b2, 1);
+    const nozzle = this.add.rectangle(10, -28, 20, 7, 0x9aa6b2, 1);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
 
-    // badge (krāsu uzliek setExtState)
-    const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14).setAlpha(0.9);
+    // badge (fons: NOK=alpha0, OK=zaļš)
+    const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14, 0.9);
 
     const txt = this.add
       .text(0, 7, label, {
@@ -662,7 +643,7 @@ class Stage1 extends Phaser.Scene {
     return c;
   }
 
-  // ✅ Teksts vienmēr balts.
+  // Teksts vienmēr balts.
   // NOK: bez fona (alpha 0), OK: tumšāks zaļš fons (alpha atpakaļ!)
   setExtState(ext, state) {
     ext.setData("state", state);
@@ -674,21 +655,19 @@ class Stage1 extends Phaser.Scene {
     txt.setColor("#ffffff");
 
     if (state === "OK") {
-      // tumšāks zaļš, lai baltais labi “izlec”
       badge.setFillStyle(0x0a8f3f);
-      badge.setAlpha(0.95); // <- svarīgi atjaunot, ja iepriekš NOK bija alpha=0
+      badge.setAlpha(0.95);
     } else {
-      // NOK: bezkrāsains fons
       badge.setAlpha(0);
-      badge.setFillStyle(0xff4040); // drošībai, ja kādreiz alpha pacelsi
+      badge.setFillStyle(0xff4040);
     }
   }
 
   makeSpotsPortrait(W) {
     const xLeft = 62;
     const xLeftTop = 180;
-    const xRight = Math.round(W * 0.90);
-    const xTopExtra = Math.round(W * 0.80);
+    const xRight = Math.round(W * 0.9);
+    const xTopExtra = Math.round(W * 0.8);
 
     return [
       { floor: 0, x: xLeftTop },
@@ -706,5 +685,128 @@ class Stage1 extends Phaser.Scene {
 
       { floor: 4, x: xRight }
     ];
+  }
+
+  // ---------------- Gradient textures (fake 3D) ----------------
+  buildGradientTextures() {
+    const ensure = (key, w, h, painter) => {
+      if (this.textures.exists(key)) return;
+      const tx = this.textures.createCanvas(key, w, h);
+      const ctx = tx.getContext();
+      painter(ctx, w, h);
+      tx.refresh();
+    };
+
+    // Platforma: horizontāls “cilindra” spīdums
+    ensure("tex_platform", 64, 16, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#1a8fb3");
+      g.addColorStop(0.45, "#0f5f7a");
+      g.addColorStop(0.7, "#0c465a");
+      g.addColorStop(1.0, "#083343");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Lifts: metālisks
+    ensure("tex_elevator", 64, 16, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#8b949e");
+      g.addColorStop(0.5, "#5b636b");
+      g.addColorStop(1.0, "#2d333b");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Buss: gaišs “plastmasa/metāls”
+    ensure("tex_bus", 128, 64, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#ffffff");
+      g.addColorStop(0.35, "#eef3f8");
+      g.addColorStop(0.7, "#d6dee8");
+      g.addColorStop(1.0, "#b8c3d1");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      // viegla “spīduma” josla
+      const g2 = ctx.createLinearGradient(0, 0, w, 0);
+      g2.addColorStop(0.0, "rgba(255,255,255,0)");
+      g2.addColorStop(0.5, "rgba(255,255,255,0.35)");
+      g2.addColorStop(1.0, "rgba(255,255,255,0)");
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
+    });
+
+    // Spēlētāja ķermenis: tumšs ar spīdumu
+    ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#050607");
+      g.addColorStop(0.55, "#23272b");
+      g.addColorStop(1.0, "#050607");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Galva: “lode” (radial)
+    ensure("tex_head", 32, 32, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, 16);
+      rg.addColorStop(0.0, "#fff4dd");
+      rg.addColorStop(0.45, "#ffe2b8");
+      rg.addColorStop(1.0, "#caa27c");
+
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Aparāta korpuss: sarkans “cilindrs”
+    ensure("tex_extShell", 32, 48, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#8e0a0a");
+      g.addColorStop(0.35, "#ff2b2b");
+      g.addColorStop(0.55, "#ff5a5a");
+      g.addColorStop(1.0, "#8e0a0a");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Riepa: tumšs radial
+    ensure("tex_wheel", 64, 64, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 8, cy - 8, 6, cx, cy, 30);
+      rg.addColorStop(0.0, "#4a4a4a");
+      rg.addColorStop(0.6, "#1a1a1a");
+      rg.addColorStop(1.0, "#050505");
+
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Disks: metālisks radial
+    ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 6, cy - 6, 4, cx, cy, 18);
+      rg.addColorStop(0.0, "#f2f2f2");
+      rg.addColorStop(0.6, "#9a9a9a");
+      rg.addColorStop(1.0, "#3a3a3a");
+
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
   }
 }
