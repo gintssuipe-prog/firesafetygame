@@ -1,4 +1,4 @@
-// stabila versija ar 3D  1
+// Stage1.js — stabila versija ar 3D + salabota 1px šķirba (pelēkais pārklāj sarkano)
 class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
@@ -60,7 +60,7 @@ class Stage1 extends Phaser.Scene {
     }
     this.THICK = 18;
 
-    // ---- Platformas (tagad: Image + static body) ----
+    // ---- Platformas (Image + static body) ----
     this.platforms = this.physics.add.staticGroup();
 
     // 1. stāvs pilnā platumā
@@ -93,7 +93,7 @@ class Stage1 extends Phaser.Scene {
       if (seg2W > 12) this.addPlatform(seg2X, y, seg2W, this.THICK);
     }
 
-    // ---- BUSS (tagad: gradient Image) ----
+    // ---- BUSS (gradient Image) ----
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
     this.BUS.x = 0;
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
@@ -119,7 +119,6 @@ class Stage1 extends Phaser.Scene {
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
     this.add.image(wheelX, wheelY, "tex_wheel").setDisplaySize(42, 42).setDepth(this.DEPTH.bus - 2);
-
     this.add.image(wheelX, wheelY, "tex_wheelHub").setDisplaySize(22, 22).setDepth(this.DEPTH.bus - 1);
 
     // bus “zona”
@@ -596,14 +595,15 @@ class Stage1 extends Phaser.Scene {
     return c;
   }
 
+  // ✅ ŠEIT ir “šķirbas” labojums:
+  // pelēko daļu ielaižam 1px sarkanajā, plus pixel-snapping
   makeExtinguisher(x, y, label) {
-    // pixel-snapping container pozīcijai
     const c = this.add.container(Math.round(x), Math.round(y));
 
     const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // ✅ pārklājam 1px, lai NEBŪTU šķirbas
-    // (ielaižam pelēko daļu mazliet “iekšā” sarkanajā korpusā)
+    // pelēkais rokturis + slīps uzgalis (gradient image)
+    // bija: -24 un -28; tagad: -23 un -27 => pārklāj 1px šķirbu
     const handleBase = this.add.image(0, -23, "tex_extHandle").setDisplaySize(16, 10);
     handleBase.setPosition(Math.round(handleBase.x), Math.round(handleBase.y));
 
@@ -611,6 +611,7 @@ class Stage1 extends Phaser.Scene {
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
     nozzle.setPosition(Math.round(nozzle.x), Math.round(nozzle.y));
 
+    // badge (fons: NOK=alpha0, OK=zaļš)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14, 0.9);
 
     const txt = this.add
@@ -631,11 +632,14 @@ class Stage1 extends Phaser.Scene {
     c.setData("txt", txt);
     c.setData("badge", badge);
 
+    // drošības tīkls
     this.setExtState(c, "NOK");
+
     return c;
   }
 
   // Teksts vienmēr balts.
+  // NOK: bez fona (alpha 0), OK: tumšāks zaļš fons (alpha atpakaļ!)
   setExtState(ext, state) {
     ext.setData("state", state);
     ext.getData("txt").setText(state);
@@ -688,6 +692,7 @@ class Stage1 extends Phaser.Scene {
       tx.refresh();
     };
 
+    // Platforma: horizontāls “cilindra” spīdums
     ensure("tex_platform", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#1a8fb3");
@@ -698,6 +703,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Lifts: metālisks
     ensure("tex_elevator", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#8b949e");
@@ -707,6 +713,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Buss: gaišs “plastmasa/metāls”
     ensure("tex_bus", 128, 64, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#ffffff");
@@ -716,6 +723,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
+      // viegla “spīduma” josla
       const g2 = ctx.createLinearGradient(0, 0, w, 0);
       g2.addColorStop(0.0, "rgba(255,255,255,0)");
       g2.addColorStop(0.5, "rgba(255,255,255,0.35)");
@@ -724,6 +732,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
     });
 
+    // Spēlētāja ķermenis: tumšs ar spīdumu
     ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#050607");
@@ -733,6 +742,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Galva: “lode” (radial)
     ensure("tex_head", 32, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -749,6 +759,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
+    // Aparāta korpuss: sarkans “cilindrs”
     ensure("tex_extShell", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#8e0a0a");
@@ -759,7 +770,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // pelēkais rokturis
+    // ✅ Pelēkā augša (gradient) — rokturis
     ensure("tex_extHandle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
@@ -783,16 +794,16 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 6 + Math.round((h - 12) * 0.65), w, Math.round((h - 12) * 0.35));
     });
 
-    // pelēkais uzgalis
+    // ✅ Pelēkais uzgalis (gradient)
     ensure("tex_extNozzle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
       const g = ctx.createLinearGradient(0, 0, w, 0);
-      g.addColorStop(0.0, "#1c232a");
-      g.addColorStop(0.35, "#b4c0cc");
+      g.addColorStop(0.0, "#12171d");
+      g.addColorStop(0.28, "#a9b6c2");
       g.addColorStop(0.55, "#eef2f6");
-      g.addColorStop(0.8, "#8d99a4");
-      g.addColorStop(1.0, "#12171d");
+      g.addColorStop(0.78, "#8d99a4");
+      g.addColorStop(1.0, "#0f141a");
 
       ctx.fillStyle = g;
       ctx.fillRect(0, 10, w, h - 20);
@@ -807,6 +818,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 10, w, h - 20);
     });
 
+    // Riepa: tumšs radial
     ensure("tex_wheel", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -823,6 +835,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
+    // Disks: metālisks radial
     ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
