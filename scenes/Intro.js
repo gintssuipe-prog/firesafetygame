@@ -3,13 +3,21 @@ class Intro extends Phaser.Scene {
     super("Intro");
   }
 
+  preload() {
+    // ✅ Intro bilde (ieliec failu: assets/img/intro.png)
+    this.load.image("intro_bg", "assets/img/intro.png");
+  }
+
   create() {
-    // fons
+    // fons (ja bilde vēl nav ielādējusies vai ir tukšums)
     this.cameras.main.setBackgroundColor("#000000");
 
-    // ✅ ņemam reālo canvas izmēru
     const W = this.scale.width;
     const H = this.scale.height;
+
+    // ✅ bilde pa visu ekrānu
+    const bg = this.add.image(W / 2, H / 2, "intro_bg");
+    bg.setDisplaySize(W, H);
 
     // virsraksts – centrēts
     this.add
