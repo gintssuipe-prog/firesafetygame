@@ -45,9 +45,8 @@ class Stage1 extends Phaser.Scene {
       overlay: 400
     };
 
-    // ✅ gradient-tekstūras + pogu tekstūras
+    // ✅ gradient-tekstūras
     this.buildGradientTextures();
-    this.buildControlTextures();
 
     // ---- Grīdas (5 stāvi) ----
     const topY = 130;
@@ -118,8 +117,16 @@ class Stage1 extends Phaser.Scene {
     const wantedWheelY = this.BUS.y + this.BUS.h + 16;
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
-    this.add.image(wheelX, wheelY, "tex_wheel").setDisplaySize(42, 42).setDepth(this.DEPTH.bus - 2);
-    this.add.image(wheelX, wheelY, "tex_wheelHub").setDisplaySize(28, 28).setDepth(this.DEPTH.bus - 1);
+    this.add
+      .image(wheelX, wheelY, "tex_wheel")
+      .setDisplaySize(42, 42)
+      .setDepth(this.DEPTH.bus - 2);
+
+    // disks lielāks -> riepa plānāka
+    this.add
+      .image(wheelX, wheelY, "tex_wheelHub")
+      .setDisplaySize(28, 28)
+      .setDepth(this.DEPTH.bus - 1);
 
     // bus “zona”
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
@@ -137,7 +144,7 @@ class Stage1 extends Phaser.Scene {
         const x = this.BUS.x + padX + c * cellW + cellW / 2;
         const y = this.BUS.y + padY + r * cellH + cellH / 2;
         this.busSlots.push({ x, y, used: false });
-        this.add.rectangle(x, y, 18, 18, 0x0b0f14, 0.12).setDepth(this.DEPTH.bus);
+        this.add.rectangle(x, y, 18, 18, 0x0b0f14, 0x0.12).setDepth(this.DEPTH.bus);
       }
     }
 
@@ -181,7 +188,7 @@ class Stage1 extends Phaser.Scene {
       const floorSurfaceY = this.FLOORS_Y[s.floor];
       const extY = floorSurfaceY - 22;
 
-      // uzlīme virs aparāta
+      // uzlīme virs aparāta (bez outline)
       const stickerY = extY - 54;
       const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85).setDepth(this.DEPTH.stickers);
 
@@ -307,164 +314,86 @@ class Stage1 extends Phaser.Scene {
     const areaTop = this.playH;
     const areaH = this.controlsH;
 
-    // panelis
     this.add
       .rectangle(W / 2, areaTop + areaH / 2, W, areaH, 0x081018, 0.95)
       .setScrollFactor(0)
       .setDepth(this.DEPTH.controls);
 
-    // pogu izmēri (kā bildē)
-    const bw = 150;
-    const bh = 86;
+    const R = 46;
 
-    const leftCX = 110;
-    const rightCX = W - 110;
+    const mkBtn = (cx, cy, label) => {
+      const circle = this.add
+        .circle(cx, cy, R, 0x142334, 1)
+        .setScrollFactor(0)
+        .setDepth(this.DEPTH.controls + 1)
+        .setInteractive({ useHandCursor: true });
 
-    const topY = areaTop + 52;
-    const bottomY = areaTop + 138;
-
-    // helper: izveido 3D podziņu (shadow + face + saturs)
-    const mk3DBtn = (cx, cy) => {
-      const cont = this.add.container(cx, cy).setScrollFactor(0).setDepth(this.DEPTH.controls + 2);
-      cont.setSize(bw, bh);
-
-      const shadow = this.add.image(0, 6, "tex_btnShadow").setDisplaySize(bw, bh).setAlpha(0.65);
-      const face = this.add.image(0, 0, "tex_btnFace").setDisplaySize(bw, bh);
-
-      cont.add([shadow, face]);
-
-      // Interactive laukums (pats konteiners)
-      cont.setInteractive(new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh), Phaser.Geom.Rectangle.Contains);
-
-      cont._shadow = shadow;
-      cont._face = face;
-      cont._pressed = false;
-
-      const pressIn = () => {
-        if (cont._pressed) return;
-        cont._pressed = true;
-
-        cont._face.setTexture("tex_btnFacePressed");
-        cont._shadow.setAlpha(0.35);
-
-        this.tweens.add({
-          targets: cont,
-          y: cy + 5,
-          scaleX: 0.985,
-          scaleY: 0.985,
-          duration: 70
-        });
-      };
-
-      const pressOut = () => {
-        if (!cont._pressed) return;
-        cont._pressed = false;
-
-        cont._face.setTexture("tex_btnFace");
-        cont._shadow.setAlpha(0.65);
-
-        this.tweens.add({
-          targets: cont,
-          y: cy,
-          scaleX: 1,
-          scaleY: 1,
-          duration: 90
-        });
-      };
-
-      cont._pressIn = pressIn;
-      cont._pressOut = pressOut;
-
-      return cont;
-    };
-
-    // helper: bultiņa ar “outline” (kā bildē)
-    const mkArrowText = (x, y, s) => {
-      return this.add
-        .text(x, y, s, {
+      const t = this.add
+        .text(cx, cy, label, {
           fontFamily: "Arial",
-          fontSize: "44px",
-          color: "#1f2a33",
-          fontStyle: "bold",
-          stroke: "#0b1a22",
-          strokeThickness: 5
+          fontSize: "26px",
+          color: "#e7edf5",
+          fontStyle: "bold"
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
-        .setDepth(this.DEPTH.controls + 4);
+        .setDepth(this.DEPTH.controls + 2);
+
+      circle._label = t;
+      return circle;
     };
 
-    const mkLabel = (x, y, s) => {
-      return this.add
-        .text(x, y, s, {
-          fontFamily: "Arial",
-          fontSize: "34px",
-          color: "#ffffff",
-          fontStyle: "normal"
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(this.DEPTH.controls + 4);
+    const leftX = 70;
+    const yMid = areaTop + areaH / 2;
+
+    const btnLeft = mkBtn(leftX, yMid - 45, "←");
+    const btnDown = mkBtn(leftX, yMid + 45, "↓");
+
+    const rightX = W - 70;
+    const btnRight = mkBtn(rightX, yMid - 45, "→");
+    const btnUp = mkBtn(rightX, yMid + 45, "↑");
+
+    const pressIn = (btn) => {
+      btn.setFillStyle(0x1d3a55, 1);
+      this.tweens.add({ targets: [btn, btn._label], scaleX: 0.96, scaleY: 0.96, duration: 60 });
     };
-
-    // --- LEFT TOP (←) ---
-    const btnLeft = mk3DBtn(leftCX, topY);
-    const leftArrow = mkArrowText(leftCX, topY, "←");
-
-    // --- LEFT BOTTOM (↓ + NOLIEC) ---
-    const btnDown = mk3DBtn(leftCX, bottomY);
-    const downArrow = mkArrowText(leftCX, bottomY - 20, "↓").setFontSize(40);
-    const downLabel = mkLabel(leftCX, bottomY + 10, "NOLIEC").setFontSize(34);
-
-    // --- RIGHT TOP (→) ---
-    const btnRight = mk3DBtn(rightCX, topY);
-    const rightArrow = mkArrowText(rightCX, topY, "→");
-
-    // --- RIGHT BOTTOM (PACEL + ↑) ---
-    const btnUp = mk3DBtn(rightCX, bottomY);
-    const upLabel = mkLabel(rightCX, bottomY - 10, "PACEL").setFontSize(34);
-    const upArrow = mkArrowText(rightCX, bottomY + 20, "↑").setFontSize(40);
-
-    // lai saturs spiežoties iet līdzi konteineram:
-    btnLeft.add(leftArrow);
-    btnDown.add(downArrow);
-    btnDown.add(downLabel);
-    btnRight.add(rightArrow);
-    btnUp.add(upLabel);
-    btnUp.add(upArrow);
+    const pressOut = (btn) => {
+      btn.setFillStyle(0x142334, 1);
+      this.tweens.add({ targets: [btn, btn._label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
+    };
 
     const bindHold = (btn, key) => {
       btn.on("pointerdown", () => {
         this.touch[key] = true;
-        btn._pressIn();
+        pressIn(btn);
       });
       btn.on("pointerup", () => {
         this.touch[key] = false;
-        btn._pressOut();
+        pressOut(btn);
       });
       btn.on("pointerout", () => {
         this.touch[key] = false;
-        btn._pressOut();
+        pressOut(btn);
       });
       btn.on("pointercancel", () => {
         this.touch[key] = false;
-        btn._pressOut();
+        pressOut(btn);
       });
     };
 
     const bindTap = (btn, key) => {
       btn.on("pointerdown", () => {
         this.touch[key] = true;
-        btn._pressIn();
+        pressIn(btn);
       });
       btn.on("pointerup", () => {
-        btn._pressOut();
+        pressOut(btn);
       });
       btn.on("pointerout", () => {
-        btn._pressOut();
+        pressOut(btn);
       });
       btn.on("pointercancel", () => {
-        btn._pressOut();
+        pressOut(btn);
       });
     };
 
@@ -651,6 +580,7 @@ class Stage1 extends Phaser.Scene {
     };
   }
 
+  // Platforma kā gradient-Image + static body
   addPlatform(xLeft, surfaceY, width, thickness) {
     const img = this.add
       .image(xLeft + width / 2, surfaceY + thickness / 2, "tex_platform")
@@ -681,10 +611,11 @@ class Stage1 extends Phaser.Scene {
     const hose = this.add.image(0, -26, "tex_extHose").setDisplaySize(36, 10);
     hose.setRotation(Phaser.Math.DegToRad(-18));
 
-    // šļūtenes gals/nozzle (melns ar gradientu)
+    // ✅ šļūtenes gals/nozzle (melns ar gradientu)
     const nozzleTip = this.add.image(18, -32, "tex_extNozzle").setDisplaySize(14, 8);
     nozzleTip.setRotation(Phaser.Math.DegToRad(-18));
 
+    // vienkāršs turētājs
     const handleBase = this.add.rectangle(-4, -22, 16, 10, 0x7f8b96, 1);
 
     // badge
@@ -712,6 +643,8 @@ class Stage1 extends Phaser.Scene {
     return c;
   }
 
+  // Teksts vienmēr balts.
+  // NOK: bez fona (alpha 0), OK: tumšāks zaļš fons (alpha atpakaļ!)
   setExtState(ext, state) {
     ext.setData("state", state);
     ext.getData("txt").setText(state);
@@ -764,6 +697,7 @@ class Stage1 extends Phaser.Scene {
       tx.refresh();
     };
 
+    // Platforma
     ensure("tex_platform", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#1a8fb3");
@@ -774,6 +708,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Lifts
     ensure("tex_elevator", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#8b949e");
@@ -783,6 +718,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Buss (apakša tumšāka)
     ensure("tex_bus", 128, 64, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#ffffff");
@@ -800,6 +736,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
     });
 
+    // Spēlētāja ķermenis
     ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#050607");
@@ -809,6 +746,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Galva
     ensure("tex_head", 32, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -825,6 +763,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
+    // Aparāta korpuss
     ensure("tex_extShell", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#8e0a0a");
@@ -835,6 +774,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
+    // Šļūtene/virsdaļa
     ensure("tex_extHose", 64, 16, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, w, 0);
@@ -854,6 +794,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(2, 4, w - 4, 8);
     });
 
+    // ✅ Nozzle tip: melns, mazs “plastmasas” gradients
     ensure("tex_extNozzle", 32, 16, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, w, 0);
@@ -863,12 +804,14 @@ class Stage1 extends Phaser.Scene {
       g.addColorStop(1.0, "#050505");
       ctx.fillStyle = g;
 
+      // mazs “kapsulas” taisnstūris
       const x = 4,
         y = 4,
         rw = w - 8,
         rh = h - 8;
       ctx.fillRect(x, y, rw, rh);
 
+      // viegls spīdums pa augšu
       const g2 = ctx.createLinearGradient(0, 0, 0, h);
       g2.addColorStop(0.0, "rgba(255,255,255,0.18)");
       g2.addColorStop(0.5, "rgba(255,255,255,0)");
@@ -877,6 +820,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(x, y, rw, rh);
     });
 
+    // Riepa
     ensure("tex_wheel", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -893,6 +837,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
+    // Disks
     ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -907,70 +852,6 @@ class Stage1 extends Phaser.Scene {
       ctx.beginPath();
       ctx.arc(cx, cy, 20, 0, Math.PI * 2);
       ctx.closePath();
-      ctx.fill();
-    });
-  }
-
-  // ---------------- Control textures (3D buttons) ----------------
-  buildControlTextures() {
-    const ensure = (key, w, h, painter) => {
-      if (this.textures.exists(key)) return;
-      const tx = this.textures.createCanvas(key, w, h);
-      const ctx = tx.getContext();
-      painter(ctx, w, h);
-      tx.refresh();
-    };
-
-    const roundRect = (ctx, x, y, w, h, r) => {
-      const rr = Math.min(r, w / 2, h / 2);
-      ctx.beginPath();
-      ctx.moveTo(x + rr, y);
-      ctx.arcTo(x + w, y, x + w, y + h, rr);
-      ctx.arcTo(x + w, y + h, x, y + h, rr);
-      ctx.arcTo(x, y + h, x, y, rr);
-      ctx.arcTo(x, y, x + w, y, rr);
-      ctx.closePath();
-    };
-
-    // Shadow (tumšs, mīksts)
-    ensure("tex_btnShadow", 320, 200, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      roundRect(ctx, 18, 18, w - 36, h - 36, 44);
-      ctx.fill();
-    });
-
-    // Face (normāls)
-    ensure("tex_btnFace", 320, 200, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-
-      // pamatkrāsa + gradients
-      const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0.0, "#1c6c8b");
-      g.addColorStop(0.45, "#15617e");
-      g.addColorStop(1.0, "#0f4f66");
-
-      ctx.fillStyle = g;
-      roundRect(ctx, 10, 10, w - 20, h - 20, 46);
-      ctx.fill();
-
-      // tumšāka “mala” (ļoti subtila)
-      ctx.fillStyle = "rgba(6,22,30,0.35)";
-      roundRect(ctx, 10, 10, w - 20, h - 20, 46);
-      ctx.fill("evenodd");
-    });
-
-    // Face (pressed) – nedaudz tumšāks + mazāk spīduma
-    ensure("tex_btnFacePressed", 320, 200, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-
-      const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0.0, "#155a74");
-      g.addColorStop(0.55, "#124f66");
-      g.addColorStop(1.0, "#0d3f52");
-
-      ctx.fillStyle = g;
-      roundRect(ctx, 10, 10, w - 20, h - 20, 46);
       ctx.fill();
     });
   }
