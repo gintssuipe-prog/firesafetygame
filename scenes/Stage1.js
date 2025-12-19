@@ -1,4 +1,4 @@
-// Stage1.js — stabila versija ar 3D + salabota 1px šķirba (pelēkais pārklāj sarkano)
+// Stage1.js — stabila versija ar 3D + salabotas “šķirbas” + UI bez fona + copyright apakšā
 class Stage1 extends Phaser.Scene {
   constructor() {
     super("Stage1");
@@ -205,9 +205,25 @@ class Stage1 extends Phaser.Scene {
 
     this.totalCount = this.slots.length;
 
-    // ---- UI ----
-    this.readyText = this.add.text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle()).setDepth(this.DEPTH.ui);
-    this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle()).setDepth(this.DEPTH.ui);
+    // ---- UI (bez melnā fona) ----
+    this.readyText = this.add
+      .text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStylePlain())
+      .setDepth(this.DEPTH.ui);
+
+    this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStylePlain()).setDepth(this.DEPTH.ui);
+
+    // ---- Apakšā pa vidu (bez fona) ----
+    // ✅ MAINI ŠEIT, JA GRIBI NOPIELABOT VERSIJAS CIPARUS:
+    const VERSION_TEXT = "©Gints Suipe v.5.0"; // <-- te vari manuāli mainīt v.5.0
+    this.add
+      .text(W / 2, this.playH - 6, VERSION_TEXT, {
+        fontFamily: "Arial",
+        fontSize: "12px",
+        color: "#ffffff",
+        alpha: 0.85
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(this.DEPTH.ui);
 
     // ---- Kontroles (telefons) ----
     this.createPortraitControls();
@@ -563,6 +579,7 @@ class Stage1 extends Phaser.Scene {
   }
 
   // ---------------- Drawing helpers ----------------
+  // (atstāju veco, ja vēl kaut kur vajag)
   uiStyle() {
     return {
       fontFamily: "Arial",
@@ -570,6 +587,15 @@ class Stage1 extends Phaser.Scene {
       color: "#e7edf5",
       backgroundColor: "rgba(0,0,0,0.35)",
       padding: { x: 10, y: 6 }
+    };
+  }
+
+  // ✅ bez fona (priekš kreisā augšējā UI)
+  uiStylePlain() {
+    return {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#ffffff"
     };
   }
 
@@ -584,30 +610,43 @@ class Stage1 extends Phaser.Scene {
     this.platforms.add(img);
   }
 
+  // ✅ “šķirbas” labojums arī galvai: snap uz veseliem pikseļiem + neliels pārklājums
   makePlayer(x, surfaceY) {
-    const c = this.add.container(x, surfaceY);
+    const c = this.add.container(Math.round(x), Math.round(surfaceY));
 
     const body = this.add.image(0, -31, "tex_playerBody").setDisplaySize(30, 44);
+    body.setPosition(Math.round(body.x), Math.round(body.y));
+
     const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1);
-    const head = this.add.image(0, -58, "tex_head").setDisplaySize(22, 22);
+    stripe.setPosition(Math.round(stripe.x), Math.round(stripe.y));
+
+    // galvu nolaidām par 1px un noapaļojām koordinātas => pazūd “sprauga”
+    const head = this.add.image(0, -57, "tex_head").setDisplaySize(22, 22);
+    head.setPosition(Math.round(head.x), Math.round(head.y));
 
     c.add([body, stripe, head]);
     return c;
   }
 
-  // ✅ ŠEIT ir “šķirbas” labojums:
-  // pelēko daļu ielaižam 1px sarkanajā, plus pixel-snapping
+  // ✅ “šķirbas” labojums aparātam:
+  // 1) snap uz veseliem pikseļiem
+  // 2) pelēko ielaižam 1–2px sarkanajā
+  // 3) pievienojam plānu “savienojuma” joslu ar to pašu pelēko gradientu (maskē jebkuru 1px cauri-spīdēšanu)
   makeExtinguisher(x, y, label) {
     const c = this.add.container(Math.round(x), Math.round(y));
 
     const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // pelēkais rokturis + slīps uzgalis (gradient image)
-    // bija: -24 un -28; tagad: -23 un -27 => pārklāj 1px šķirbu
-    const handleBase = this.add.image(0, -23, "tex_extHandle").setDisplaySize(16, 10);
+    // savienojuma josla (pārklāj tieši robežu)
+    const join = this.add.image(0, -19, "tex_extHandle").setDisplaySize(24, 4);
+    join.setPosition(Math.round(join.x), Math.round(join.y));
+
+    // pelēkais rokturis
+    const handleBase = this.add.image(0, -22, "tex_extHandle").setDisplaySize(16, 10);
     handleBase.setPosition(Math.round(handleBase.x), Math.round(handleBase.y));
 
-    const nozzle = this.add.image(10, -27, "tex_extNozzle").setDisplaySize(20, 7);
+    // pelēkais uzgalis
+    const nozzle = this.add.image(10, -26, "tex_extNozzle").setDisplaySize(20, 7);
     nozzle.setRotation(Phaser.Math.DegToRad(-20));
     nozzle.setPosition(Math.round(nozzle.x), Math.round(nozzle.y));
 
@@ -623,7 +662,7 @@ class Stage1 extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    c.add([shell, handleBase, nozzle, badge, txt]);
+    c.add([shell, join, handleBase, nozzle, badge, txt]);
 
     this.physics.add.existing(c);
     c.body.setSize(24, 38);
@@ -770,7 +809,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // ✅ Pelēkā augša (gradient) — rokturis
+    // Pelēkā augša (gradient) — rokturis
     ensure("tex_extHandle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
@@ -794,7 +833,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 6 + Math.round((h - 12) * 0.65), w, Math.round((h - 12) * 0.35));
     });
 
-    // ✅ Pelēkais uzgalis (gradient)
+    // Pelēkais uzgalis (gradient)
     ensure("tex_extNozzle", 64, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
 
