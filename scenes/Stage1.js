@@ -117,15 +117,8 @@ class Stage1 extends Phaser.Scene {
     const wantedWheelY = this.BUS.y + this.BUS.h + 16;
     const wheelY = Math.min(this.playH - 12, wantedWheelY);
 
-    this.add
-      .image(wheelX, wheelY, "tex_wheel")
-      .setDisplaySize(42, 42)
-      .setDepth(this.DEPTH.bus - 2);
-
-    this.add
-      .image(wheelX, wheelY, "tex_wheelHub")
-      .setDisplaySize(22, 22)
-      .setDepth(this.DEPTH.bus - 1);
+    this.add.image(wheelX, wheelY, "tex_wheel").setDisplaySize(42, 42).setDepth(this.DEPTH.bus - 2);
+    this.add.image(wheelX, wheelY, "tex_wheelHub").setDisplaySize(22, 22).setDepth(this.DEPTH.bus - 1);
 
     // bus “zona”
     this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
@@ -189,9 +182,7 @@ class Stage1 extends Phaser.Scene {
 
       // uzlīme virs aparāta (bez kontūras)
       const stickerY = extY - 54;
-      const sticker = this.add
-        .rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85)
-        .setDepth(this.DEPTH.stickers);
+      const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85).setDepth(this.DEPTH.stickers);
 
       const slot = { x: s.x, y: extY, sticker, used: false };
       this.slots.push(slot);
@@ -214,10 +205,7 @@ class Stage1 extends Phaser.Scene {
     this.totalCount = this.slots.length;
 
     // ---- UI ----
-    this.readyText = this.add
-      .text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle())
-      .setDepth(this.DEPTH.ui);
-
+    this.readyText = this.add.text(12, 10, `Gatavs: 0/${this.totalCount}`, this.uiStyle()).setDepth(this.DEPTH.ui);
     this.timeText = this.add.text(12, 42, "Laiks: 00:00", this.uiStyle()).setDepth(this.DEPTH.ui);
 
     // ---- Kontroles (telefons) ----
@@ -611,10 +599,12 @@ class Stage1 extends Phaser.Scene {
 
     const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
 
-    // ✅ AUGŠA kā konceptā: pelēks bloks + slīps uzgalis (abi ar gradientu, bez outline)
-    const topBase = this.add.image(0, -24, "tex_extTopBase").setDisplaySize(22, 14);
-    const nozzle = this.add.image(12, -30, "tex_extTopNozzle").setDisplaySize(26, 8);
-    nozzle.setRotation(Phaser.Math.DegToRad(-20));
+    // ✅ JAUNĀ AUGŠA (kā tavā bildē): sviras + “ass” + uzgalis, fake-3D, bez outline
+    const headMech = this.add.image(2, -28, "tex_extHead").setDisplaySize(46, 18);
+    headMech.setRotation(Phaser.Math.DegToRad(-12));
+
+    const pin = this.add.image(0, -28, "tex_extHeadPin").setDisplaySize(12, 12);
+    pin.setRotation(Phaser.Math.DegToRad(-12));
 
     // badge (fons: NOK=alpha0, OK=zaļš)
     const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14, 0.9);
@@ -628,7 +618,7 @@ class Stage1 extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    c.add([shell, topBase, nozzle, badge, txt]);
+    c.add([shell, headMech, pin, badge, txt]);
 
     this.physics.add.existing(c);
     c.body.setSize(24, 38);
@@ -697,7 +687,7 @@ class Stage1 extends Phaser.Scene {
       tx.refresh();
     };
 
-    // Platforma: horizontāls “cilindra” spīdums
+    // Platforma
     ensure("tex_platform", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#1a8fb3");
@@ -708,7 +698,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Lifts: metālisks
+    // Lifts
     ensure("tex_elevator", 64, 16, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#8b949e");
@@ -718,7 +708,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Buss: gaišs “plastmasa/metāls”
+    // Buss
     ensure("tex_bus", 128, 64, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#ffffff");
@@ -728,7 +718,6 @@ class Stage1 extends Phaser.Scene {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      // viegla “spīduma” josla
       const g2 = ctx.createLinearGradient(0, 0, w, 0);
       g2.addColorStop(0.0, "rgba(255,255,255,0)");
       g2.addColorStop(0.5, "rgba(255,255,255,0.35)");
@@ -737,7 +726,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
     });
 
-    // Spēlētāja ķermenis: tumšs ar spīdumu
+    // Spēlētāja ķermenis
     ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#050607");
@@ -747,7 +736,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // Galva: “lode” (radial)
+    // Galva
     ensure("tex_head", 32, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -764,7 +753,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Aparāta korpuss: sarkans “cilindrs”
+    // Aparāta korpuss
     ensure("tex_extShell", 32, 48, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0.0, "#8e0a0a");
@@ -775,45 +764,96 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // ✅ Aparāta augšas bloks: pelēks “metāls/plastmasa” ar spīdumu (bez outline)
-    ensure("tex_extTopBase", 64, 32, (ctx, w, h) => {
+    // ✅ JAUNĀ “MEHĀNISKĀ” AUGŠA (stilā kā tavā ikonā) – sviras + uzgalis, fake-3D
+    ensure("tex_extHead", 128, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
-      const g = ctx.createLinearGradient(0, 0, w, 0);
-      g.addColorStop(0.0, "#1b2128");
-      g.addColorStop(0.25, "#7f8a95");
-      g.addColorStop(0.5, "#c8d0d8");
-      g.addColorStop(0.75, "#5e6974");
-      g.addColorStop(1.0, "#10161c");
-      ctx.fillStyle = g;
-      ctx.fillRect(10, 9, w - 20, h - 18);
 
-      // ļoti viegls “top highlight”
-      const g2 = ctx.createLinearGradient(0, 0, 0, h);
-      g2.addColorStop(0.0, "rgba(255,255,255,0.18)");
-      g2.addColorStop(0.6, "rgba(255,255,255,0)");
-      ctx.fillStyle = g2;
-      ctx.fillRect(10, 9, w - 20, h - 18);
+      const metal = ctx.createLinearGradient(0, 0, w, 0);
+      metal.addColorStop(0.0, "#141a20");
+      metal.addColorStop(0.2, "#6f7a84");
+      metal.addColorStop(0.45, "#d7dee6");
+      metal.addColorStop(0.65, "#8c97a2");
+      metal.addColorStop(1.0, "#0f141a");
+
+      const metalDark = ctx.createLinearGradient(0, 0, w, 0);
+      metalDark.addColorStop(0.0, "#0b0f14");
+      metalDark.addColorStop(0.35, "#58636d");
+      metalDark.addColorStop(0.55, "#b5bdc6");
+      metalDark.addColorStop(1.0, "#070b10");
+
+      // helper: rounded rect
+      const rr = (x, y, ww, hh, r) => {
+        const rad = Math.min(r, ww / 2, hh / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rad, y);
+        ctx.arcTo(x + ww, y, x + ww, y + hh, rad);
+        ctx.arcTo(x + ww, y + hh, x, y + hh, rad);
+        ctx.arcTo(x, y + hh, x, y, rad);
+        ctx.arcTo(x, y, x + ww, y, rad);
+        ctx.closePath();
+      };
+
+      // apakšējā svira (biezāka)
+      ctx.fillStyle = metal;
+      rr(18, 30, 68, 14, 7);
+      ctx.fill();
+
+      // augšējā svira (plānāka, virsū)
+      ctx.fillStyle = metalDark;
+      rr(28, 20, 58, 10, 5);
+      ctx.fill();
+
+      // īss uzgalis pa labi
+      ctx.fillStyle = metal;
+      rr(78, 16, 34, 12, 6);
+      ctx.fill();
+
+      // highlight joslas (fake 3d)
+      const hl = ctx.createLinearGradient(0, 0, 0, h);
+      hl.addColorStop(0.0, "rgba(255,255,255,0.22)");
+      hl.addColorStop(0.5, "rgba(255,255,255,0.06)");
+      hl.addColorStop(1.0, "rgba(255,255,255,0)");
+      ctx.fillStyle = hl;
+      rr(18, 30, 68, 14, 7);
+      ctx.fill();
+
+      const hl2 = ctx.createLinearGradient(0, 0, 0, h);
+      hl2.addColorStop(0.0, "rgba(255,255,255,0.18)");
+      hl2.addColorStop(0.6, "rgba(255,255,255,0)");
+      ctx.fillStyle = hl2;
+      rr(78, 16, 34, 12, 6);
+      ctx.fill();
     });
 
-    // ✅ Aparāta uzgalis: šaurāks, tumšāks, ar spīdumu
-    ensure("tex_extTopNozzle", 64, 24, (ctx, w, h) => {
+    // ✅ “pin” aplis (ass) – ar metālisku radial gradient
+    ensure("tex_extHeadPin", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
-      const g = ctx.createLinearGradient(0, 0, w, 0);
-      g.addColorStop(0.0, "#0f141a");
-      g.addColorStop(0.35, "#6f7a84");
-      g.addColorStop(0.55, "#aab4be");
-      g.addColorStop(1.0, "#0b1016");
-      ctx.fillStyle = g;
-      ctx.fillRect(8, 9, w - 16, 6);
+      const cx = w / 2,
+        cy = h / 2;
 
-      const g2 = ctx.createLinearGradient(0, 0, 0, h);
-      g2.addColorStop(0.0, "rgba(255,255,255,0.16)");
-      g2.addColorStop(0.6, "rgba(255,255,255,0)");
-      ctx.fillStyle = g2;
-      ctx.fillRect(8, 8, w - 16, 8);
+      const rg = ctx.createRadialGradient(cx - 6, cy - 6, 3, cx, cy, 18);
+      rg.addColorStop(0.0, "#ffffff");
+      rg.addColorStop(0.45, "#c8d0d8");
+      rg.addColorStop(1.0, "#3a424a");
+
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // centrs tumšāks
+      const rg2 = ctx.createRadialGradient(cx - 2, cy - 2, 2, cx, cy, 10);
+      rg2.addColorStop(0.0, "#2a3138");
+      rg2.addColorStop(1.0, "#0b0f14");
+      ctx.fillStyle = rg2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
     });
 
-    // Riepa: tumšs radial
+    // Riepa
     ensure("tex_wheel", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -830,7 +870,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Disks: metālisks radial
+    // Disks
     ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
