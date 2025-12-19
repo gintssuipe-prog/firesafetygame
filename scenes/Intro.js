@@ -4,7 +4,6 @@ class Intro extends Phaser.Scene {
   }
 
   preload() {
-    // Intro bilde + vienīgā spēles mūzika
     this.load.image("intro_bg", "assets/img/intro.png");
     this.load.audio("bgm", "assets/audio/intro.mp3");
   }
@@ -13,38 +12,25 @@ class Intro extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // fons
     this.cameras.main.setBackgroundColor("#000000");
 
-    // --- FONA BILDE (portrait) ---
-    // Atstājam apakšā melnu gabalu start pogai/tekstam.
-    const bottomPad = 210; // cik daudz melnā laukuma apakšā
-    const targetH = H - bottomPad;
+    // --- FONA BILDE: COVER pa visu canvas (nesaraujas) ---
+    const bg = this.add.image(W / 2, H / 2, "intro_bg").setOrigin(0.5);
 
-    const bg = this.add.image(W / 2, targetH / 2, "intro_bg");
-    bg.setOrigin(0.5, 0.5);
-
-    // cover uz augšu (lai nav baltas malas)
-    const scale = Math.max(W / bg.width, targetH / bg.height);
+    // Cover: lai aizpildītu visu ekrānu, pat ja apgriež malas
+    const scale = Math.max(W / bg.width, H / bg.height);
     bg.setScale(scale);
 
-    // ja gribi, vari pabīdīt bildi mazliet uz augšu/leju:
-    // bg.y = targetH / 2 - 10;
-
-    // --- TEKSTI ---
-    const titleY = Math.round(targetH * 0.72);
-    const hintY = titleY + 52;
-
+    // --- Apakšā tumšs panelis tekstam/pogai (bet bilde paliek pilna) ---
+    const panelH = 220; // var mainīt, ja gribi vairāk/mazāk melno zonu
     this.add
-      .text(W / 2, titleY, "PASPĒT LAIKĀ!", {
-        fontFamily: "Arial",
-        fontSize: "34px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      })
+      .rectangle(W / 2, H - panelH / 2, W, panelH, 0x000000, 0.55)
       .setOrigin(0.5);
 
-    // HINTS (paliek zem virsraksta)
+    // --- HINT (mirgo) + START poga ---
+    const hintY = H - 150;
+    const btnY = H - 85; // ✅ poga zem hint
+
     const hint = this.add
       .text(W / 2, hintY, "Spied START vai ENTER", {
         fontFamily: "Arial",
@@ -53,7 +39,6 @@ class Intro extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // mirgošana hintam (kā arkādēs)
     this.tweens.add({
       targets: hint,
       alpha: 0.15,
@@ -62,10 +47,8 @@ class Intro extends Phaser.Scene {
       repeat: -1
     });
 
-    // --- START POGA (zem hint) ---
-    const btnY = hintY + 75; // ✅ zem hint
-    const btnW = 190;
-    const btnH = 56;
+    const btnW = 200;
+    const btnH = 58;
 
     const btnBg = this.add.rectangle(W / 2, btnY, btnW, btnH, 0x1f3a52, 1);
     const btnText = this.add
@@ -83,20 +66,20 @@ class Intro extends Phaser.Scene {
       btnBg.setFillStyle(0x2a587c, 1);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
+
     const pressOut = () => {
       btnBg.setFillStyle(0x1f3a52, 1);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
 
     const doStart = async () => {
-      // ✅ Audio autoplay uz PC prasa user gesture — šis ir tieši tas brīdis.
-      // Startējam mūziku TIKAI 1 reizi uz visu spēli:
+      // ✅ Startējam mūziku 1x uz visu spēli (tikai pēc user gesture)
       if (!this.sound.get("bgm")) {
-        // dažreiz pārlūks prasa explicit resume
         if (this.sound.context && this.sound.context.state === "suspended") {
-          try { await this.sound.context.resume(); } catch (e) {}
+          try {
+            await this.sound.context.resume();
+          } catch (e) {}
         }
-
         const bgm = this.sound.add("bgm", { loop: true, volume: 0.7 });
         bgm.play();
       }
@@ -104,25 +87,16 @@ class Intro extends Phaser.Scene {
       this.scene.start("MainMenu");
     };
 
-    // poga ar peli/touch
-    btnBg.on("pointerdown", () => {
-      pressIn();
-    });
+    // poga (pele/touch)
+    btnBg.on("pointerdown", () => pressIn());
     btnBg.on("pointerup", () => {
       pressOut();
       doStart();
     });
-    btnBg.on("pointerout", () => {
-      pressOut();
-    });
-    btnBg.on("pointercancel", () => {
-      pressOut();
-    });
+    btnBg.on("pointerout", () => pressOut());
+    btnBg.on("pointercancel", () => pressOut());
 
-    // ENTER uz klaviatūras
+    // ENTER
     this.input.keyboard.once("keydown-ENTER", () => doStart());
-
-    // ja gribi, vari atstāt arī “klikšķis jebkur” kā fallback:
-    // this.input.once("pointerdown", () => doStart());
   }
 }
