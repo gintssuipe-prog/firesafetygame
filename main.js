@@ -3,7 +3,15 @@ const config = {
   width: 420,
   height: 820,
   parent: "game",
+
+  // ✅ ŠIS IR GALVENAIS FIX portrait režīmam
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+
   scene: [Intro, MainMenu, Stage1],
+
   physics: {
     default: "arcade",
     arcade: {
