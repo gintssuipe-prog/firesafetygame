@@ -733,7 +733,7 @@ class Stage1 extends Phaser.Scene {
     c._vecLayer = vec;
 
     // Krāsas
-    const hatColor = 0x1b222a;      // tumša, bet ne “absolūti melna”
+    const hatColor = 0x3a3a3a;      // tumša, bet ne “absolūti melna”
     const skinColor = 0xd8b08b;
     const legColor = 0x1a1a1a;
 
