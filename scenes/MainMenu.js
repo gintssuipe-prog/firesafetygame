@@ -3,111 +3,149 @@ class MainMenu extends Phaser.Scene {
     super("MainMenu");
   }
 
+  preload() {
+    // tas pats intro fons
+    this.load.image("introBg", "assets/img/intro.png");
+  }
+
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    this.cameras.main.setBackgroundColor("#0b0f14");
+    // ---------- FONA BILDE ----------
+    const bg = this.add.image(W / 2, H / 2, "introBg");
 
-    // -----------------
-    // VIRSRaksts
-    // -----------------
-    this.add
-      .text(W / 2, 80, "Ugunsdrošības glābējzvans", {
+    // pareizi izstiepjam pa visu ekrānu
+    const scale = Math.max(W / bg.width, H / bg.height);
+    bg.setScale(scale);
+    bg.setAlpha(0.25); // 👈 dim efekts
+
+    // papildus tumšinājums ar gradientu (bez asas malas)
+    const overlay = this.add.graphics();
+    const grd = overlay.createLinearGradient(0, H * 0.4, 0, H);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(1, "rgba(0,0,0,0.85)");
+
+    overlay.fillStyle(grd);
+    overlay.fillRect(0, 0, W, H);
+
+    // ---------- VIRSRaksts ----------
+    this.add.text(W / 2, 90, "PASPĒT LAIKĀ", {
+      fontFamily: "Arial",
+      fontSize: "28px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
+    // ---------- APRAKSTS ----------
+    this.add.text(
+      W / 2,
+      160,
+      "Iejūties ugunsdrošības speciālista lomā!\n\n" +
+      "Savā busiņā pārbaudi un atjauno visus objektā\n" +
+      "esošos ugunsdzēšamos aparātus.\n\n" +
+      "Vari sakrāt vairākus aparātus busā uz\n" +
+      "atjaunošanu (ne vairāk kā 6 vienlaicīgi).\n\n" +
+      "Dari kā vēlies — tavs mērķis ir pavadīt\n" +
+      "objektā pēc iespējas mazāk laika.",
+      {
         fontFamily: "Arial",
-        fontSize: "26px",
-        color: "#ffffff",
-        fontStyle: "bold",
+        fontSize: "16px",
+        color: "#e6ebf2",
         align: "center",
+        lineSpacing: 6,
         wordWrap: { width: W - 40 }
-      })
-      .setOrigin(0.5);
+      }
+    ).setOrigin(0.5, 0);
 
-    // -----------------
-    // SKAIDROJOŠAIS TEKSTS
-    // -----------------
-    this.add
-      .text(
-        W / 2,
-        210,
-        "Spēlējot, domā par efektīvākajām taktikām\n" +
-          "novecojušu ugunsdzēšamo aparātu atjaunošanā.\n\n" +
-          "Vari savākt vairākus aparātus un nogādāt\n" +
-          "tos busā uz atjaunošanu, bet ne vairāk kā\n" +
-          "SEŠUS vienlaicīgi.\n\n" +
-          "Dari, kā uzskati par labāko — tavs mērķis\n" +
-          "ir pavadīt objektā pēc iespējas mazāk laika.",
-        {
-          fontFamily: "Arial",
-          fontSize: "15px",
-          color: "#d6dee8",
-          align: "center",
-          lineSpacing: 6,
-          wordWrap: { width: W - 50 }
-        }
-      )
-      .setOrigin(0.5);
-
-    // -----------------
-    // POGA "UZ PRIEKŠU" (Intro stilā)
-    // -----------------
-    const btnY = H - 140;
-    const btnW = 220;
-    const btnH = 64;
-
-    // ēna (fake 3D)
-    const shadow = this.add
-      .rectangle(W / 2, btnY + 6, btnW, btnH, 0x000000, 0.6)
-      .setDepth(1);
-
-    const btn = this.add
-      .rectangle(W / 2, btnY, btnW, btnH, 0x142334)
-      .setDepth(2)
-      .setInteractive({ useHandCursor: true });
-
-    const btnText = this.add
-      .text(W / 2, btnY, "UZ PRIEKŠU", {
+    // ---------- KONTROLES ----------
+    this.add.text(
+      W / 2,
+      H - 230,
+      "KONTROLE:\n← → pārvietošanās\n↑ paņemt\n↓ nolikt",
+      {
         fontFamily: "Arial",
-        fontSize: "22px",
-        color: "#e7edf5",
+        fontSize: "14px",
+        color: "#c7d0dd",
+        align: "center",
+        lineSpacing: 4
+      }
+    ).setOrigin(0.5, 0);
+
+    // ---------- ATRUNA ----------
+    this.add.text(
+      W / 2,
+      H - 150,
+      "Visi spēles personāži, atribūti, loģika un\nlokācijas ir māksliniecisks izdomājums.",
+      {
+        fontFamily: "Arial",
+        fontSize: "13px",
+        color: "#ff4a4a",
+        align: "center"
+      }
+    ).setOrigin(0.5, 0);
+
+    // ---------- POGA UZ PRIEKŠU ----------
+    const btnY = H - 70;
+
+    const shadow = this.add.rectangle(
+      W / 2 + 4,
+      btnY + 4,
+      200,
+      54,
+      0x000000,
+      0.4
+    );
+
+    const btn = this.add.rectangle(
+      W / 2,
+      btnY,
+      200,
+      54,
+      0x1f3b57
+    ).setInteractive({ useHandCursor: true });
+
+    const btnText = this.add.text(
+      W / 2,
+      btnY,
+      "UZ PRIEKŠU",
+      {
+        fontFamily: "Arial",
+        fontSize: "20px",
+        color: "#ffffff",
         fontStyle: "bold"
-      })
-      .setOrigin(0.5)
-      .setDepth(3);
+      }
+    ).setOrigin(0.5);
 
-    const startGame = () => {
-      this.scene.start("Stage1");
-    };
-
-    // ---- pogas animācija (tā pati sajūta kā Intro)
-    btn.on("pointerdown", () => {
-      btn.setFillStyle(0x1d3a55, 1);
+    const pressIn = () => {
+      btn.setFillStyle(0x2c5275);
       this.tweens.add({
         targets: [btn, btnText],
         scaleX: 0.96,
         scaleY: 0.96,
-        duration: 60
+        duration: 80
       });
-    });
+    };
 
-    btn.on("pointerup", () => {
-      btn.setFillStyle(0x142334, 1);
+    const pressOut = () => {
+      btn.setFillStyle(0x1f3b57);
       this.tweens.add({
         targets: [btn, btnText],
         scaleX: 1,
         scaleY: 1,
-        duration: 80,
-        onComplete: startGame
+        duration: 100
       });
-    });
+    };
 
-    btn.on("pointerout", () => {
-      btn.setFillStyle(0x142334, 1);
-      btn.setScale(1);
-      btnText.setScale(1);
+    btn.on("pointerdown", pressIn);
+    btn.on("pointerup", () => {
+      pressOut();
+      this.scene.start("Stage1");
     });
+    btn.on("pointerout", pressOut);
 
-    // ENTER atbalsts
-    this.input.keyboard.once("keydown-ENTER", startGame);
+    this.input.keyboard.once("keydown-ENTER", () => {
+      this.scene.start("Stage1");
+    });
   }
 }
