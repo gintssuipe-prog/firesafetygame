@@ -1,4 +1,4 @@
-// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” skrienot
+// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” skrienot  forši kustās   cepure taalu
 // ✅ Saglabāts: tavs pēdējais stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
 // ✅ Pievienots: vektoru cepure (trīsstūris) bez rastra artefaktiem (nekādu pelēku pikseļu)
 // ✅ Pievienots: vektoru rokas (trīsstūri) virzienā uz skriešanu
