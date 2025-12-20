@@ -1,4 +1,4 @@
-// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana”  kantaina cepure aizgaaja
+// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana”  kantaina cepure aizgaaja  resnakas kajas
 // ✅ Saglabāts: stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
 // ✅ Cepure: 2 taisnstūri (kronis + nags), vektors, tumša (ne pilnīgi melna), tuvāk galvai
 // ✅ Rokas: šaurāki trīsstūri
@@ -776,8 +776,8 @@ class Stage1 extends Phaser.Scene {
 
     // ---- Kājas (kluči) ----
     const legBaseY = -6;
-    const legL = this.add.rectangle(-6, legBaseY, 8, 16, legColor, 1);
-    const legR = this.add.rectangle(6, legBaseY, 8, 16, legColor, 1);
+ const legL = this.add.rectangle(-9, legBaseY, 14, 16, legColor, 1);
+const legR = this.add.rectangle(9,  legBaseY, 14, 16, legColor, 1);
 
     c._legL = legL;
     c._legR = legR;
