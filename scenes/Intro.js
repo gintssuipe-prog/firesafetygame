@@ -14,22 +14,40 @@ class Intro extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor("#000000");
 
-    // --- FONA BILDE: COVER pa visu canvas (nesaraujas) ---
+    // ===============================
+    // 1) FONA BILDE: cover pa visu canvas
+    // ===============================
     const bg = this.add.image(W / 2, H / 2, "intro_bg").setOrigin(0.5);
-
-    // Cover: lai aizpildītu visu ekrānu, pat ja apgriež malas
     const scale = Math.max(W / bg.width, H / bg.height);
     bg.setScale(scale);
 
-    // --- Apakšā tumšs panelis tekstam/pogai (bet bilde paliek pilna) ---
-    const panelH = 220; // var mainīt, ja gribi vairāk/mazāk melno zonu
-    this.add
-      .rectangle(W / 2, H - panelH / 2, W, panelH, 0x000000, 0.55)
-      .setOrigin(0.5);
+    // ===============================
+    // 2) Apakšējais gradient overlay (melns -> caurspīdīgs)
+    //    augšā: 0 alpha, apakšā: ~0.92 alpha
+    // ===============================
+    const gradH = 280; // <- cik augstu gradients iet uz augšu (vari mainīt)
+    const rt = this.add.renderTexture(0, H - gradH, W, gradH).setOrigin(0);
 
-    // --- HINT (mirgo) + START poga ---
-    const hintY = H - 150;
-    const btnY = H - 85; // ✅ poga zem hint
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillGradientStyle(
+      0x000000, // top-left
+      0x000000, // top-right
+      0x000000, // bottom-left
+      0x000000, // bottom-right
+      0.0, // alpha top-left (caurspīdīgs)
+      0.0, // alpha top-right
+      0.92, // alpha bottom-left (melns)
+      0.92 // alpha bottom-right
+    );
+    g.fillRect(0, 0, W, gradH);
+    rt.draw(g);
+    g.destroy();
+
+    // ===============================
+    // 3) Hint + START poga (poga zem hint)
+    // ===============================
+    const hintY = H - 150; // hints paliek kā iepriekš
+    const btnY = hintY + 75; // ✅ START poga zem hint
 
     const hint = this.add
       .text(W / 2, hintY, "Spied START vai ENTER", {
@@ -50,7 +68,10 @@ class Intro extends Phaser.Scene {
     const btnW = 200;
     const btnH = 58;
 
-    const btnBg = this.add.rectangle(W / 2, btnY, btnW, btnH, 0x1f3a52, 1);
+    const btnBg = this.add
+      .rectangle(W / 2, btnY, btnW, btnH, 0x1f3a52, 1)
+      .setInteractive({ useHandCursor: true });
+
     const btnText = this.add
       .text(W / 2, btnY, "START", {
         fontFamily: "Arial",
@@ -59,8 +80,6 @@ class Intro extends Phaser.Scene {
         fontStyle: "bold"
       })
       .setOrigin(0.5);
-
-    btnBg.setInteractive({ useHandCursor: true });
 
     const pressIn = () => {
       btnBg.setFillStyle(0x2a587c, 1);
@@ -73,7 +92,7 @@ class Intro extends Phaser.Scene {
     };
 
     const doStart = async () => {
-      // ✅ Startējam mūziku 1x uz visu spēli (tikai pēc user gesture)
+      // ✅ mūzika 1x uz visu spēli (pēc user gesture)
       if (!this.sound.get("bgm")) {
         if (this.sound.context && this.sound.context.state === "suspended") {
           try {
@@ -87,7 +106,7 @@ class Intro extends Phaser.Scene {
       this.scene.start("MainMenu");
     };
 
-    // poga (pele/touch)
+    // poga (touch/pele)
     btnBg.on("pointerdown", () => pressIn());
     btnBg.on("pointerup", () => {
       pressOut();
