@@ -9,11 +9,13 @@ class MainMenu extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor("#0b0f14");
 
-    // ---- VIRSRaksts ----
+    // -----------------
+    // VIRSRaksts
+    // -----------------
     this.add
-      .text(W / 2, 90, "Ugunsdrošības glābējzvans", {
+      .text(W / 2, 80, "Ugunsdrošības glābējzvans", {
         fontFamily: "Arial",
-        fontSize: "28px",
+        fontSize: "26px",
         color: "#ffffff",
         fontStyle: "bold",
         align: "center",
@@ -21,71 +23,91 @@ class MainMenu extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // ---- APRAKSTS ----
+    // -----------------
+    // SKAIDROJOŠAIS TEKSTS
+    // -----------------
     this.add
       .text(
         W / 2,
-        220,
-        "MĒRĶIS:\n" +
-          "Savākt bojātos ugunsdzēšamos aparātus,\n" +
-          "nogādāt tos busā un atgriezt atjaunotus.\n\n" +
-          "VADĪBA:\n" +
-          "← → pārvietošanās\n" +
-          "↑ paņemt\n" +
-          "↓ nolikt",
+        210,
+        "Spēlējot, domā par efektīvākajām taktikām\n" +
+          "novecojušu ugunsdzēšamo aparātu atjaunošanā.\n\n" +
+          "Vari savākt vairākus aparātus un nogādāt\n" +
+          "tos busā uz atjaunošanu, bet ne vairāk kā\n" +
+          "SEŠUS vienlaicīgi.\n\n" +
+          "Dari, kā uzskati par labāko — tavs mērķis\n" +
+          "ir pavadīt objektā pēc iespējas mazāk laika.",
         {
           fontFamily: "Arial",
-          fontSize: "16px",
-          color: "#dddddd",
+          fontSize: "15px",
+          color: "#d6dee8",
           align: "center",
           lineSpacing: 6,
-          wordWrap: { width: W - 60 }
+          wordWrap: { width: W - 50 }
         }
       )
       .setOrigin(0.5);
 
-    // ---- POGA ----
-    const btnY = H * 0.65;
+    // -----------------
+    // POGA "UZ PRIEKŠU" (Intro stilā)
+    // -----------------
+    const btnY = H - 140;
     const btnW = 220;
     const btnH = 64;
 
     // ēna (fake 3D)
-    this.add.rectangle(W / 2, btnY + 5, btnW, btnH, 0x000000, 0.6);
+    const shadow = this.add
+      .rectangle(W / 2, btnY + 6, btnW, btnH, 0x000000, 0.6)
+      .setDepth(1);
 
     const btn = this.add
-      .rectangle(W / 2, btnY, btnW, btnH, 0x007755)
+      .rectangle(W / 2, btnY, btnW, btnH, 0x142334)
+      .setDepth(2)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
       .text(W / 2, btnY, "UZ PRIEKŠU", {
         fontFamily: "Arial",
         fontSize: "22px",
-        color: "#ffffff",
+        color: "#e7edf5",
         fontStyle: "bold"
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
 
-    // ---- INTERAKCIJA ----
     const startGame = () => {
       this.scene.start("Stage1");
     };
 
+    // ---- pogas animācija (tā pati sajūta kā Intro)
     btn.on("pointerdown", () => {
-      btn.y += 4;
-      btnText.y += 4;
+      btn.setFillStyle(0x1d3a55, 1);
+      this.tweens.add({
+        targets: [btn, btnText],
+        scaleX: 0.96,
+        scaleY: 0.96,
+        duration: 60
+      });
     });
 
     btn.on("pointerup", () => {
-      btn.y -= 4;
-      btnText.y -= 4;
-      startGame();
+      btn.setFillStyle(0x142334, 1);
+      this.tweens.add({
+        targets: [btn, btnText],
+        scaleX: 1,
+        scaleY: 1,
+        duration: 80,
+        onComplete: startGame
+      });
     });
 
     btn.on("pointerout", () => {
-      btn.y = btnY;
-      btnText.y = btnY;
+      btn.setFillStyle(0x142334, 1);
+      btn.setScale(1);
+      btnText.setScale(1);
     });
 
+    // ENTER atbalsts
     this.input.keyboard.once("keydown-ENTER", startGame);
   }
 }
