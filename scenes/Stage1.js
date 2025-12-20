@@ -1,4 +1,4 @@
-// Stage1.js — slīpēta versija + stabilizācija:
+// Stage1.js — slīpēta versija + stabilizācija:    dabuju atpakal plikpauri un plakanu busu
 // ✅ UI: Laiks kreisajā augšā, Gatavs labajā augšā, lielāki fonti
 // ✅ Noņemti 2 mazie “plauktiņi” (šaurais seg1 gabals) 2. un 4. stāvā no augšas
 // ✅ Pārcelts viens aparāts uz “pavisam šauro” vidējo plauktiņu
