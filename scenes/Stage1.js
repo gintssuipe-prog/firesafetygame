@@ -1,11 +1,8 @@
-// Stage1.js — slīpēta versija + stabilizācija + VIENKĀRŠS “cilvēciņš #2”  cepure tizli bet traadaa
-// ✅ UI: Laiks kreisajā augšā, Gatavs labajā augšā, lielāki fonti
-// ✅ Noņemti 2 mazie “plauktiņi” (šaurais seg1 gabals) 2. un 4. stāvā no augšas
-// ✅ Pārcelts viens aparāts uz “pavisam šauro” vidējo plauktiņu
-// ✅ Noņemts © teksts apakšā
-// ✅ EXIT poga pa vidu apakšā
-// ✅ BUSS: atstāts tavs stabilais (baltais gradients klucis ar spīdumu)
-// ✅ CILVĒCIŅŠ: cepure-trīsstūris + rokas-trīsstūri uz virzienu + kājas-klucīši tipina skrienot
+// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” skrienot
+// ✅ Saglabāts: tavs pēdējais stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
+// ✅ Pievienots: vektoru cepure (trīsstūris) bez rastra artefaktiem (nekādu pelēku pikseļu)
+// ✅ Pievienots: vektoru rokas (trīsstūri) virzienā uz skriešanu
+// ✅ Pievienots: vektoru kājas (kluči) ar tipināšanas animāciju, kad kustas
 
 class Stage1 extends Phaser.Scene {
   constructor() {
@@ -25,6 +22,9 @@ class Stage1 extends Phaser.Scene {
     // buss
     this.busStorage = [];
     this.BUS_CAPACITY = 6;
+
+    // anim
+    this.runT = 0; // “tipināšanas” fāze
   }
 
   create() {
@@ -113,7 +113,7 @@ class Stage1 extends Phaser.Scene {
       if (seg2W > 12) this.addPlatform(seg2X, y, seg2W, this.THICK);
     }
 
-    // ---- BUSS (ROLLBACK: tavs stabilais gradients) ----
+    // ---- BUSS (ROLLBACK: vakardienas stabilais gradients) ----
     this.BUS = { w: Math.round(W * 0.40), h: 105 };
     this.BUS.x = 0;
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
@@ -179,7 +179,7 @@ class Stage1 extends Phaser.Scene {
     this.elevator.body.setImmovable(true);
     this.prevElevY = this.elevator.y;
 
-    // ---- Spēlētājs (cilvēciņš #2) ----
+    // ---- Spēlētājs (stabils + vektoru cepure/rokas/kājas) ----
     this.player = this.makePlayer(Math.round(W * 0.22), this.FLOORS_Y[4]);
     this.player.setDepth(this.DEPTH.player);
 
@@ -275,6 +275,7 @@ class Stage1 extends Phaser.Scene {
     this.prevElevY = this.elevator.y;
 
     // kustība
+    let movingLR = false;
     if (!this.finished) {
       const left = this.cursors.left.isDown || this.touch.left;
       const right = this.cursors.right.isDown || this.touch.right;
@@ -283,27 +284,25 @@ class Stage1 extends Phaser.Scene {
       if (left) {
         this.player.body.setVelocityX(-speed);
         this.facing = -1;
+        movingLR = true;
       } else if (right) {
         this.player.body.setVelocityX(speed);
         this.facing = 1;
+        movingLR = true;
       } else {
         this.player.body.setVelocityX(0);
       }
-
-      // ✅ virziens + tipināšana (vienkārši)
-      this.applyPlayerFacing(this.player, this.facing);
-      const vx = this.player.body.velocity.x;
-      this.setPlayerWalking(this.player, Math.abs(vx) > 5);
     } else {
       this.player.body.setVelocityX(0);
-      this.setPlayerWalking(this.player, false);
     }
+
+    // ✅ vektoru “cepure/rokas” virzienā + kāju tipināšana
+    this.updatePlayerVisuals(delta, movingLR);
 
     // paņem/noliec
     if (!this.finished) {
       const upPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up) || this.consumeTouch("up");
       const downPressed = Phaser.Input.Keyboard.JustDown(this.cursors.down) || this.consumeTouch("down");
-
       if (upPressed) this.tryPickup();
       if (downPressed) this.tryDrop();
     }
@@ -325,6 +324,43 @@ class Stage1 extends Phaser.Scene {
     if (onElev) {
       this.player.y += elevDeltaY;
       if (this.carrying) this.carrying.y += elevDeltaY;
+    }
+  }
+
+  updatePlayerVisuals(delta, movingLR) {
+    if (!this.player) return;
+
+    // 1) pagriežam vektoru elementus pēc facing
+    // (vienkāršākais: flip pa X uz visu “vektoru slāni”)
+    if (this.player._vecLayer) {
+      this.player._vecLayer.scaleX = this.facing; // 1 vai -1
+    }
+
+    // 2) kāju “tipināšana”
+    if (!this.player._legL || !this.player._legR) return;
+
+    if (movingLR) {
+      this.runT += delta * 0.018; // ātrums (jo lielāks, jo ātrāk tipina)
+      const a = Math.sin(this.runT);
+      const b = Math.sin(this.runT + Math.PI);
+
+      // pāris pikseļi uz augšu/leju
+      this.player._legL.y = this.player._legBaseY + Math.round(a * 3);
+      this.player._legR.y = this.player._legBaseY + Math.round(b * 3);
+
+      // rokas arī mazliet “elpo”
+      if (this.player._armL && this.player._armR) {
+        this.player._armL.y = this.player._armBaseY + Math.round(b * 2);
+        this.player._armR.y = this.player._armBaseY + Math.round(a * 2);
+      }
+    } else {
+      // stāv mierā
+      this.player._legL.y = this.player._legBaseY;
+      this.player._legR.y = this.player._legBaseY;
+      if (this.player._armL && this.player._armR) {
+        this.player._armL.y = this.player._armBaseY;
+        this.player._armR.y = this.player._armBaseY;
+      }
     }
   }
 
@@ -409,7 +445,7 @@ class Stage1 extends Phaser.Scene {
       });
     };
 
-    // tap pogām (paņem/noliec) – consumeTouch() “apēd” vienreiz
+    // tap pogām (paņem/noliec)
     const bindTap = (btn, key) => {
       btn.on("pointerdown", () => {
         this.touch[key] = true;
@@ -679,6 +715,7 @@ class Stage1 extends Phaser.Scene {
     };
   }
 
+  // ✅ Platforma kā gradient-Image + static body
   addPlatform(xLeft, surfaceY, width, thickness) {
     const img = this.add
       .image(xLeft + width / 2, surfaceY + thickness / 2, "tex_platform")
@@ -689,106 +726,86 @@ class Stage1 extends Phaser.Scene {
     this.platforms.add(img);
   }
 
-  // ✅ CILVĒCIŅŠ #2: cepure/rokas trīsstūri + kājas klucīši tipina
+  // ✅ Spēlētājs: saglabājam veco “ķermeni/galvu” + pievienojam vektoru cepuri/rokas/kājas
   makePlayer(x, surfaceY) {
     const c = this.add.container(Math.round(x), Math.round(surfaceY));
 
-    // kājas (2 klucīši)
-    const legL = this.add.image(-7, -10, "tex_legBlock").setDisplaySize(10, 18);
-    const legR = this.add.image(7, -10, "tex_legBlock").setDisplaySize(10, 18);
-
-    // ķermenis (tavs stabilais)
+    // ķermenis (vecais stabilais)
     const body = this.add.image(0, -31, "tex_playerBody").setDisplaySize(30, 44);
     body.setPosition(Math.round(body.x), Math.round(body.y));
 
     const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1);
     stripe.setPosition(Math.round(stripe.x), Math.round(stripe.y));
 
-    // galva (tava stabilā ādas krāsā)
+    // galva (vecais stabilais)
     const head = this.add.image(0, -57, "tex_head").setDisplaySize(22, 22);
     head.setPosition(Math.round(head.x), Math.round(head.y));
 
-    // cepure: trīsstūris, ass gals uz virzienu (flipX)
-    const hat = this.add.image(0, -69, "tex_hatTri").setDisplaySize(22, 10);
+    // ===== Vektoru slānis (cepure/rokas/kājas) =====
+    // Ideja: visu vektoru daļu vienkārši “apgriežam” ar scaleX = facing (1/-1).
+    const vec = this.add.container(0, 0);
+    c._vecLayer = vec;
 
-    // rokas: trīsstūri uz virzienu (flipX + pārbīde)
-    const armBack = this.add.image(-10, -34, "tex_armTri").setDisplaySize(16, 12);
-    const armFront = this.add.image(10, -34, "tex_armTri").setDisplaySize(16, 12);
+    // Cepure (trīsstūris) — nedaudz lielāka, melna, bez kontūrām
+    // Veidojam trijstūri ar “asumu” pa labi; apgriešana notiek ar vec.scaleX
+    const hat = this.add.polygon(
+      0,
+      -69, // uz galvas
+      [
+        -10, 6,  // aizmugure apakšā
+        14, 0,   // ass gals (virziens uz priekšu)
+        -6, -10  // augša
+      ],
+      0x050607,
+      1
+    );
+    hat.setOrigin(0.5, 0.5);
 
-    // slāņi konteinerī
-    c.add([legL, legR, armBack, body, stripe, head, hat, armFront]);
+    // Rokas (2 trīsstūri) — uz skriešanas virzienu (labā roka “priekšā”, kreisā “aizmugurē”)
+    const armFront = this.add.polygon(
+      15,  // pie labās malas
+      -34,
+      [
+        0, 0,
+        14, 6,
+        2, 16
+      ],
+      0xd8b08b,
+      1
+    );
+    const armBack = this.add.polygon(
+      -15, // pie kreisās malas
+      -34,
+      [
+        0, 0,
+        12, 4,
+        2, 14
+      ],
+      0xd8b08b,
+      1
+    );
+    // rokas pamata Y, lai var mazliet “elpot” skrienot
+    c._armL = armBack;
+    c._armR = armFront;
+    c._armBaseY = armFront.y;
 
-    // references
+    // Kājas (kluči) — tipināšana ar y +/- pāris px
+    const legBaseY = -6; // zem ķermeņa
+    const legL = this.add.rectangle(-6, legBaseY, 8, 16, 0x1a1a1a, 1);
+    const legR = this.add.rectangle(6, legBaseY, 8, 16, 0x1a1a1a, 1);
+
     c._legL = legL;
     c._legR = legR;
-    c._hat = hat;
-    c._armFront = armFront;
-    c._armBack = armBack;
+    c._legBaseY = legBaseY;
 
-    // tipināšanas tweeni (pauzēti)
-    c._walkTweens = [];
+    vec.add([legL, legR, armBack, armFront, hat]);
 
-    const mkLegTween = (target, dir) =>
-      this.tweens.add({
-        targets: target,
-        y: target.y + 3 * dir,
-        duration: 120,
-        yoyo: true,
-        repeat: -1,
-        paused: true
-      });
-
-    c._walkTweens.push(mkLegTween(legL, -1));
-    c._walkTweens.push(mkLegTween(legR, +1));
-
-    const armTween = this.tweens.add({
-      targets: [armFront, armBack],
-      angle: { from: -6, to: 6 },
-      duration: 140,
-      yoyo: true,
-      repeat: -1,
-      paused: true
-    });
-    c._walkTweens.push(armTween);
-
-    // starta stāvoklis
-    this.applyPlayerFacing(c, 1);
-    this.setPlayerWalking(c, false);
+    c.add([body, stripe, head, vec]);
 
     return c;
   }
 
-  // ✅ virziens: cepures trīsstūris + rokas trīsstūri vienmēr “skatās” uz priekšu
-  applyPlayerFacing(playerContainer, facing) {
-    if (!playerContainer) return;
-    const flip = facing === -1;
-
-    if (playerContainer._hat) playerContainer._hat.setFlipX(flip);
-    if (playerContainer._armFront) playerContainer._armFront.setFlipX(flip);
-    if (playerContainer._armBack) playerContainer._armBack.setFlipX(flip);
-
-    const frontX = 12 * facing;
-    const backX = -8 * facing;
-
-    if (playerContainer._armFront) playerContainer._armFront.x = frontX;
-    if (playerContainer._armBack) playerContainer._armBack.x = backX;
-  }
-
-  // ✅ tipināšana: start/stop (bez “šķībuma” apstājoties)
-  setPlayerWalking(playerContainer, isWalking) {
-    if (!playerContainer || !playerContainer._walkTweens) return;
-
-    if (isWalking) {
-      playerContainer._walkTweens.forEach((t) => t.resume());
-    } else {
-      playerContainer._walkTweens.forEach((t) => t.pause());
-      if (playerContainer._legL) playerContainer._legL.y = -10;
-      if (playerContainer._legR) playerContainer._legR.y = -10;
-      if (playerContainer._armFront) playerContainer._armFront.angle = 0;
-      if (playerContainer._armBack) playerContainer._armBack.angle = 0;
-    }
-  }
-
+  // ✅ “šķirbas” labojums aparātam (paliek kā stabilajā)
   makeExtinguisher(x, y, label) {
     const c = this.add.container(Math.round(x), Math.round(y));
 
@@ -910,7 +927,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // ✅ BUSS (tavs stabilais “plastmasa/metāls”)
+    // ✅ Buss (vakardienas stabilais “plastmasa/metāls”)
     ensure("tex_bus", 128, 64, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0.0, "#ffffff");
@@ -939,7 +956,7 @@ class Stage1 extends Phaser.Scene {
       ctx.fillRect(0, 0, w, h);
     });
 
-    // ✅ Galva (tava stabilā ādas krāsā)
+    // ✅ Galva (vakardienas “lode” ādas krāsā)
     ensure("tex_head", 32, 32, (ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2,
@@ -954,55 +971,6 @@ class Stage1 extends Phaser.Scene {
       ctx.arc(cx, cy, 14, 0, Math.PI * 2);
       ctx.closePath();
       ctx.fill();
-    });
-
-    // ===== Cilvēciņa #2 papild-tekstuūras =====
-
-    // Cepure: trīsstūris, kas "skatās" pa labi (flipX => pa kreisi)
-    ensure("tex_hatTri", 32, 16, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#0b0d10";
-      ctx.beginPath();
-      ctx.moveTo(2, h - 2);
-      ctx.lineTo(2, 2);
-      ctx.lineTo(w - 2, h / 2);
-      ctx.closePath();
-      ctx.fill();
-
-      const hl = ctx.createLinearGradient(0, 0, 0, h);
-      hl.addColorStop(0.0, "rgba(255,255,255,0.10)");
-      hl.addColorStop(1.0, "rgba(255,255,255,0.00)");
-      ctx.fillStyle = hl;
-      ctx.fillRect(0, 0, w, h);
-    });
-
-    // Roka: trīsstūris, kas "skatās" pa labi (flipX => pa kreisi)
-    ensure("tex_armTri", 24, 18, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#d9b08c";
-      ctx.beginPath();
-      ctx.moveTo(1, h / 2);
-      ctx.lineTo(12, 1);
-      ctx.lineTo(w - 1, h / 2);
-      ctx.lineTo(12, h - 1);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = "rgba(0,0,0,0.10)";
-      ctx.fillRect(0, Math.floor(h * 0.65), w, Math.ceil(h * 0.35));
-    });
-
-    // Kāja: klucītis
-    ensure("tex_legBlock", 16, 22, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-      const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0.0, "#2a2f35");
-      g.addColorStop(1.0, "#0c0e12");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      ctx.fillRect(1, 1, w - 2, 3);
     });
 
     // Aparāta korpuss: sarkans “cilindrs”
