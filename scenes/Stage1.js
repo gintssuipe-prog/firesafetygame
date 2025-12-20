@@ -1,4 +1,4 @@
-// resnas kaajas cepure kruta   taalaak skanjas buus     baigaa stabilitaate klaat   jattestee
+// resnas kaajas cepure kruta   taalaak skanjas buus     baigaa stabilitaate klaat   jattestee     un kautkaads fiksis uz exit
 // Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” kantaina cepure aizgaaja resnakas kajas
 // ✅ Saglabāts: stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
 // ✅ Cepure: 2 taisnstūri (kronis + nags), vektors, tumša (ne pilnīgi melna), tuvāk galvai
@@ -814,6 +814,9 @@ class Stage1 extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(this.DEPTH.controls + 4);
+
+    // ✅ SVARĪGI: lai onStage1Shutdown() var nokaut arī EXIT label tweens (un cleanup ir simetrisks)
+    btn._label = label;
 
     const pressIn = () => {
       btn.setFillStyle(0xd61a1a, 1);
