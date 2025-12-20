@@ -13,6 +13,8 @@ class MainMenu extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    const isDesktop = !!(this.sys.game.device && this.sys.game.device.os && this.sys.game.device.os.desktop);
+
     this.cameras.main.setBackgroundColor("#101a24");
 
     // ---------- FONA BILDE ----------
@@ -22,19 +24,19 @@ class MainMenu extends Phaser.Scene {
     bg.setAlpha(0.12);
 
     // ---------- Apakšas tumšinājums (gradients) ----------
-    const g = this.add.graphics();
-    g.fillGradientStyle(
+    const gg = this.add.graphics();
+    gg.fillGradientStyle(
       0x000000, 0x000000, 0x000000, 0x000000,
       0.0,      0.0,      0.92,     0.92
     );
-    g.fillRect(0, Math.floor(H * 0.28), W, Math.ceil(H * 0.72));
+    gg.fillRect(0, Math.floor(H * 0.28), W, Math.ceil(H * 0.72));
 
     // ===============================
     // POGA: 1:1 kā Intro.js (pozīcija + izmēri + krāsas + animācija)
     // Intro: hintY = H - 150, btnY = hintY + 75 => btnY = H - 75
     // ===============================
     const hintY = H - 150;
-    const btnY = hintY + 75; // ✅ identiski Intro
+    const btnY = hintY + 75; // identiski Intro
     const btnW = 200;
     const btnH = 58;
 
@@ -78,135 +80,198 @@ class MainMenu extends Phaser.Scene {
     // ===============================
     // DROŠS LAYOUT BLOKS (viss virs pogas)
     // ===============================
-
-    const contentTop = 44; // drošā zona augšā (var mainīt)
     const btnTop = btnY - btnH / 2;
-    const contentBottomLimit = btnTop - 18; // atstarpe virs pogas
 
-    // Vienoti atstarpju soļi (pielāgoti šim izmēram)
-    const GAP_S = 12;
-    const GAP_M = 18;
-    const GAP_L = 24;
+    // Desktopā nolaidām visu nedaudz zemāk + vairāk elpas
+    const contentTop = isDesktop ? 78 : 56;
 
-    // --- Teksti (viss balts, izņemot sarkano atrunu) ---
-    const title = this.add.text(W / 2, 0, "PASPĒT LAIKĀ", {
-      fontFamily: "Arial",
-      fontSize: "40px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5, 0);
+    // Drošā apakšējā robeža virs pogas
+    const contentBottomLimit = btnTop - (isDesktop ? 26 : 18);
 
-    const subtitle = this.add.text(W / 2, 0, "Iejūties ugunsdrošības speciālista lomā!", {
-      fontFamily: "Arial",
-      fontSize: "22px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5, 0);
+    // Platākas, simetriskākas atstarpes
+    const GAP_S = isDesktop ? 16 : 12;
+    const GAP_M = isDesktop ? 26 : 18;
+    const GAP_L = isDesktop ? 36 : 24;
 
-    const p1 = this.add.text(W / 2, 0,
-      "Savā busiņā pārbaudi un atjauno visus\nobjektā esošos ugunsdzēšamos aparātus!",
-      {
+    // Tekstu izmēri (desktopā var atstāt tos pašus; ja gribi, varam palielināt)
+    const titleSize = 40;
+    const subSize = 22;
+    const pSize = 20;
+    const ctrlSize = 20;
+    const warnSize = 16;
+
+    // --- Satura elementi ---
+    const title = this.add
+      .text(W / 2, 0, "PASPĒT LAIKĀ", {
         fontFamily: "Arial",
-        fontSize: "20px",
+        fontSize: `${titleSize}px`,
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5, 0);
+
+    const subtitle = this.add
+      .text(W / 2, 0, "Iejūties ugunsdrošības speciālista lomā!", {
+        fontFamily: "Arial",
+        fontSize: `${subSize}px`,
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5, 0);
+
+    // P1 un P2 tu gribēji “vienu rindkopu zemāk” — tas tiek panākts ar lielākiem GAPiem
+    const p1 = this.add
+      .text(
+        W / 2,
+        0,
+        "Savā busiņā pārbaudi un atjauno visus\nobjektā esošos ugunsdzēšamos aparātus!",
+        {
+          fontFamily: "Arial",
+          fontSize: `${pSize}px`,
+          color: "#ffffff",
+          align: "center",
+          lineSpacing: 8,
+          wordWrap: { width: W - 46 }
+        }
+      )
+      .setOrigin(0.5, 0);
+
+    const p2 = this.add
+      .text(W / 2, 0, "Objektā pavadi pēc iespējas mazāk laika!", {
+        fontFamily: "Arial",
+        fontSize: `${pSize}px`,
         color: "#ffffff",
         align: "center",
-        lineSpacing: 8,
         wordWrap: { width: W - 46 }
-      }
-    ).setOrigin(0.5, 0);
+      })
+      .setOrigin(0.5, 0);
 
-    const p2 = this.add.text(W / 2, 0,
-      "Objektā pavadi pēc iespējas mazāk laika!",
-      {
+    // KONTROLE virsraksts
+    const controlsTitle = this.add
+      .text(0, 0, "KONTROLE:", {
         fontFamily: "Arial",
-        fontSize: "20px",
+        fontSize: `${ctrlSize}px`,
         color: "#ffffff",
-        align: "center",
-        wordWrap: { width: W - 46 }
-      }
-    ).setOrigin(0.5, 0);
+        fontStyle: "bold"
+      })
+      .setOrigin(0, 0);
 
-    const controlsTitle = this.add.text(Math.round(W * 0.18), 0, "KONTROLE:", {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0, 0);
+    // Kontroles rindas: 2 kolonnas (perfekti taisni stabiņi)
+    const ctrlRows = [
+      { key: "→", label: "Pa labi" },
+      { key: "←", label: "Pa kreisi" },
+      { key: "↑", label: "Paņemt" },
+      { key: "↓", label: "Nolikt" }
+    ];
 
-    const controlsText = this.add.text(Math.round(W * 0.18), 0,
-      "→   Pa labi\n←   Pa kreisi\n↑   Paņemt\n↓   Nolikt",
-      {
-        fontFamily: "Arial",
-        fontSize: "20px",
-        color: "#ffffff",
-        align: "left",
-        lineSpacing: 10
-      }
-    ).setOrigin(0, 0);
+    const ctrlKeyTexts = [];
+    const ctrlLabelTexts = [];
 
-    const warning = this.add.text(
-      W / 2,
-      0,
-      "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!",
-      {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ff3b3b",
-        align: "center",
-        wordWrap: { width: W - 46 }
-      }
-    ).setOrigin(0.5, 0);
+    // izvēlamies kontroles bloka kreiso malu “optiski smuki”
+    const ctrlLeft = Math.round(W * (isDesktop ? 0.28 : 0.22));
+    const ctrlKeyX = ctrlLeft;
+    const ctrlLabelX = ctrlLeft + (isDesktop ? 46 : 44); // kolonnas attālums
 
-    // Visi “satura” elementi (bez pogas)
-    const contentItems = [title, subtitle, p1, p2, controlsTitle, controlsText, warning];
+    for (let i = 0; i < ctrlRows.length; i++) {
+      const kt = this.add
+        .text(ctrlKeyX, 0, ctrlRows[i].key, {
+          fontFamily: "Arial",
+          fontSize: `${ctrlSize}px`,
+          color: "#ffffff"
+        })
+        .setOrigin(0, 0);
 
-    // 1) Izkārtojums pēc faktiskajiem augstumiem
+      const lt = this.add
+        .text(ctrlLabelX, 0, ctrlRows[i].label, {
+          fontFamily: "Arial",
+          fontSize: `${ctrlSize}px`,
+          color: "#ffffff"
+        })
+        .setOrigin(0, 0);
+
+      ctrlKeyTexts.push(kt);
+      ctrlLabelTexts.push(lt);
+    }
+
+    const warning = this.add
+      .text(
+        W / 2,
+        0,
+        "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!",
+        {
+          fontFamily: "Arial",
+          fontSize: `${warnSize}px`,
+          color: "#ff3b3b",
+          align: "center",
+          wordWrap: { width: W - 46 }
+        }
+      )
+      .setOrigin(0.5, 0);
+
+    const contentItems = [
+      title,
+      subtitle,
+      p1,
+      p2,
+      controlsTitle,
+      ...ctrlKeyTexts,
+      ...ctrlLabelTexts,
+      warning
+    ];
+
+    // 1) Layout funkcija (pēc faktiskajiem augstumiem)
     const layoutOnce = () => {
       let y = contentTop;
 
+      // VIRSRAKSTS — tu gribēji zemāk: to dara contentTop + GAPi
       title.setPosition(W / 2, y);
-      y += title.height + GAP_S;
+      y += title.height + GAP_M;
 
       subtitle.setPosition(W / 2, y);
-      y += subtitle.height + GAP_L;
+      y += subtitle.height + GAP_L; // vairāk elpas starp sub un p1
 
+      // P1 zemāk (viena “rindkopa”): lielāks GAP_L iepriekš jau to izdara
       p1.setPosition(W / 2, y);
-      y += p1.height + GAP_M;
+      y += p1.height + GAP_L; // platāka un simetriska šķirba uz p2
 
+      // P2 zemāk (viena “rindkopa”)
       p2.setPosition(W / 2, y);
       y += p2.height + GAP_L;
 
-      controlsTitle.setPosition(Math.round(W * 0.18), y);
+      // Kontrole bloks
+      controlsTitle.setPosition(ctrlLeft, y);
       y += controlsTitle.height + GAP_S;
 
-      controlsText.setPosition(Math.round(W * 0.18), y);
-      y += controlsText.height;
+      // rindas ar fiksētu line-height (nelietojam “space” izlīdzināšanu)
+      const lineH = isDesktop ? 34 : 32;
+      for (let i = 0; i < ctrlRows.length; i++) {
+        const rowY = y + i * lineH;
+        ctrlKeyTexts[i].setPosition(ctrlKeyX, rowY);
+        ctrlLabelTexts[i].setPosition(ctrlLabelX, rowY);
+      }
+
+      const controlsBottom = y + ctrlRows.length * lineH;
 
       // Sarkanais teksts: pa vidu starp kontroles apakšu un pogas augšu
-      const controlsBottom = y;
       const warningY = Math.round((controlsBottom + contentBottomLimit) / 2);
       warning.setPosition(W / 2, warningY);
 
-      // Atgriež “sliktāko” (zemāko) satura apakšu, lai saprastu overflow
       const warningBottom = warningY + warning.height;
       return Math.max(controlsBottom, warningBottom);
     };
 
-    // 2) Ja pārāk zemu (iekāpj pogā), samazini saturu ar scale un pārliec vēlreiz
+    // 2) Fit: ja pārāk zemu, samazina saturu (nedaudz) un pārliek
     const fitContent = () => {
-      // sākumā 1.0
       contentItems.forEach(o => o.setScale(1));
 
       const bottom = layoutOnce();
       const overflow = bottom - contentBottomLimit;
 
       if (overflow > 0) {
-        // piegriežam scale tikai tik, cik vajag (ar rezervi), bet ne zem 0.88
         const available = contentBottomLimit - contentTop;
-        const used = (bottom - contentTop);
-        let s = available / used;
+        const used = bottom - contentTop;
 
-        // drošības robežas
+        let s = available / used;
         s = Math.max(0.88, Math.min(1.0, s - 0.02));
 
         contentItems.forEach(o => o.setScale(s));
