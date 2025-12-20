@@ -1,3 +1,4 @@
+// stabils, gribu tagad pielikt copuright un sākuma fade
 class Intro extends Phaser.Scene {
   constructor() {
     super("Intro");
