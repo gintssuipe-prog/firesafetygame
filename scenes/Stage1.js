@@ -1,4 +1,4 @@
-// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” skrienot
+// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana” skrienot   experimenti ar cepuri
 // ✅ Saglabāts: tavs pēdējais stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
 // ✅ Pievienots: vektoru cepure (trīsstūris) bez rastra artefaktiem
 // ✅ Pievienots: vektoru rokas (ŠAURĀKI trīsstūri) virzienā uz skriešanu
@@ -742,7 +742,7 @@ class Stage1 extends Phaser.Scene {
     c._vecLayer = vec;
 
     // Krāsas (ne tik melns)
-    const HAT_COLOR = 0x121821; // tumši pelēkzils (labāk uz fona)
+    const HAT_COLOR = x202020; // tumši pelēkzils (labāk uz fona)
     const ARM_COLOR = 0xd8b08b;
     const LEG_COLOR = 0x202020;
 
@@ -750,7 +750,7 @@ class Stage1 extends Phaser.Scene {
     // ass gals pa labi; apgriešana notiek ar vec.scaleX
     const hat = this.add.polygon(
       0,
-      -62, // <-- bija par augstu; šis sēž tuvāk galvai
+      -72, // <-- bija par augstu; šis sēž tuvāk galvai
       [
         -12, 6,  // aizmugure apakšā
         18, 0,   // ass gals uz priekšu
