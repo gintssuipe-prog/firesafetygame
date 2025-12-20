@@ -1,6 +1,20 @@
+// mainmenu ar pogas izvietojuma fixu   un citiem bug defenderiem
 class MainMenu extends Phaser.Scene {
   constructor() {
     super("MainMenu");
+
+    this._starting = false;
+    this._onResize = null;
+
+    // references, lai droši tīrītu
+    this._btnBg = null;
+    this._btnText = null;
+    this._bg = null;
+    this._gg = null;
+
+    this._contentItems = [];
+    this._ctrlKeyTexts = [];
+    this._ctrlLabelTexts = [];
   }
 
   preload() {
@@ -10,42 +24,32 @@ class MainMenu extends Phaser.Scene {
   }
 
   create() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    this.cameras.main.setBackgroundColor("#101a24");
 
     const isDesktop = !!(this.sys.game.device && this.sys.game.device.os && this.sys.game.device.os.desktop);
 
-    this.cameras.main.setBackgroundColor("#101a24");
-
     // ---------- FONA BILDE ----------
-    const bg = this.add.image(W / 2, H / 2, "intro_bg").setOrigin(0.5);
-    const scaleBg = Math.max(W / bg.width, H / bg.height);
-    bg.setScale(scaleBg);
+    const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5);
     bg.setAlpha(0.12);
+    this._bg = bg;
 
     // ---------- Apakšas tumšinājums (gradients) ----------
     const gg = this.add.graphics();
-    gg.fillGradientStyle(
-      0x000000, 0x000000, 0x000000, 0x000000,
-      0.0,      0.0,      0.92,     0.92
-    );
-    gg.fillRect(0, Math.floor(H * 0.28), W, Math.ceil(H * 0.72));
+    this._gg = gg;
 
     // ===============================
     // POGA: 1:1 kā Intro.js (pozīcija + izmēri + krāsas + animācija)
-    // Intro: hintY = H - 150, btnY = hintY + 75 => btnY = H - 75
+    // Intro: hintY = H - (isDesktop ? 165 : 150); btnY = hintY + 75
     // ===============================
-    const hintY = H - 150;
-    const btnY = hintY + 75; // identiski Intro
     const btnW = 200;
     const btnH = 58;
 
     const btnBg = this.add
-      .rectangle(W / 2, btnY, btnW, btnH, 0x1f3a52, 1)
+      .rectangle(0, 0, btnW, btnH, 0x1f3a52, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
-      .text(W / 2, btnY, "UZ PRIEKŠU", {
+      .text(0, 0, "UZ PRIEKŠU", {
         fontFamily: "Arial",
         fontSize: "22px",
         color: "#ffffff",
@@ -53,17 +57,29 @@ class MainMenu extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    this._btnBg = btnBg;
+    this._btnText = btnText;
+
     const pressIn = () => {
       btnBg.setFillStyle(0x2a587c, 1);
+      this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
 
     const pressOut = () => {
       btnBg.setFillStyle(0x1f3a52, 1);
+      this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
 
     const goNext = () => {
+      if (this._starting) return;
+      this._starting = true;
+
+      // stabilitāte pret dubult-trigger
+      btnBg.disableInteractive();
+      if (this.input.keyboard) this.input.keyboard.enabled = false;
+
       this.scene.start("Stage1");
     };
 
@@ -74,35 +90,19 @@ class MainMenu extends Phaser.Scene {
     });
     btnBg.on("pointerout", () => pressOut());
     btnBg.on("pointercancel", () => pressOut());
-
     this.input.keyboard.once("keydown-ENTER", () => goNext());
 
     // ===============================
     // DROŠS LAYOUT BLOKS (viss virs pogas)
     // ===============================
-    const btnTop = btnY - btnH / 2;
-
-    // Desktopā nolaidām visu nedaudz zemāk + vairāk elpas
-    const contentTop = isDesktop ? 78 : 56;
-
-    // Drošā apakšējā robeža virs pogas
-    const contentBottomLimit = btnTop - (isDesktop ? 26 : 18);
-
-    // Platākas, simetriskākas atstarpes
-    const GAP_S = isDesktop ? 16 : 12;
-    const GAP_M = isDesktop ? 26 : 18;
-    const GAP_L = isDesktop ? 36 : 24;
-
-    // Tekstu izmēri (desktopā var atstāt tos pašus; ja gribi, varam palielināt)
     const titleSize = 40;
     const subSize = 22;
     const pSize = 20;
     const ctrlSize = 20;
     const warnSize = 16;
 
-    // --- Satura elementi ---
     const title = this.add
-      .text(W / 2, 0, "PASPĒT LAIKĀ", {
+      .text(0, 0, "PASPĒT LAIKĀ", {
         fontFamily: "Arial",
         fontSize: `${titleSize}px`,
         color: "#ffffff",
@@ -111,7 +111,7 @@ class MainMenu extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     const subtitle = this.add
-      .text(W / 2, 0, "Iejūties ugunsdrošības speciālista lomā!", {
+      .text(0, 0, "Iejūties ugunsdrošības speciālista lomā!", {
         fontFamily: "Arial",
         fontSize: `${subSize}px`,
         color: "#ffffff",
@@ -119,34 +119,25 @@ class MainMenu extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    // P1 un P2 tu gribēji “vienu rindkopu zemāk” — tas tiek panākts ar lielākiem GAPiem
     const p1 = this.add
-      .text(
-        W / 2,
-        0,
-        "Savā busiņā pārbaudi un atjauno visus\nobjektā esošos ugunsdzēšamos aparātus!",
-        {
-          fontFamily: "Arial",
-          fontSize: `${pSize}px`,
-          color: "#ffffff",
-          align: "center",
-          lineSpacing: 8,
-          wordWrap: { width: W - 46 }
-        }
-      )
-      .setOrigin(0.5, 0);
-
-    const p2 = this.add
-      .text(W / 2, 0, "Objektā pavadi pēc iespējas mazāk laika!", {
+      .text(0, 0, "Savā busiņā pārbaudi un atjauno visus\nobjektā esošos ugunsdzēšamos aparātus!", {
         fontFamily: "Arial",
         fontSize: `${pSize}px`,
         color: "#ffffff",
         align: "center",
-        wordWrap: { width: W - 46 }
+        lineSpacing: 8
       })
       .setOrigin(0.5, 0);
 
-    // KONTROLE virsraksts
+    const p2 = this.add
+      .text(0, 0, "Objektā pavadi pēc iespējas mazāk laika!", {
+        fontFamily: "Arial",
+        fontSize: `${pSize}px`,
+        color: "#ffffff",
+        align: "center"
+      })
+      .setOrigin(0.5, 0);
+
     const controlsTitle = this.add
       .text(0, 0, "KONTROLE:", {
         fontFamily: "Arial",
@@ -156,7 +147,6 @@ class MainMenu extends Phaser.Scene {
       })
       .setOrigin(0, 0);
 
-    // Kontroles rindas: 2 kolonnas (perfekti taisni stabiņi)
     const ctrlRows = [
       { key: "→", label: "Pa labi" },
       { key: "←", label: "Pa kreisi" },
@@ -167,14 +157,9 @@ class MainMenu extends Phaser.Scene {
     const ctrlKeyTexts = [];
     const ctrlLabelTexts = [];
 
-    // izvēlamies kontroles bloka kreiso malu “optiski smuki”
-    const ctrlLeft = Math.round(W * (isDesktop ? 0.28 : 0.22));
-    const ctrlKeyX = ctrlLeft;
-    const ctrlLabelX = ctrlLeft + (isDesktop ? 46 : 44); // kolonnas attālums
-
     for (let i = 0; i < ctrlRows.length; i++) {
       const kt = this.add
-        .text(ctrlKeyX, 0, ctrlRows[i].key, {
+        .text(0, 0, ctrlRows[i].key, {
           fontFamily: "Arial",
           fontSize: `${ctrlSize}px`,
           color: "#ffffff"
@@ -182,7 +167,7 @@ class MainMenu extends Phaser.Scene {
         .setOrigin(0, 0);
 
       const lt = this.add
-        .text(ctrlLabelX, 0, ctrlRows[i].label, {
+        .text(0, 0, ctrlRows[i].label, {
           fontFamily: "Arial",
           fontSize: `${ctrlSize}px`,
           color: "#ffffff"
@@ -195,90 +180,150 @@ class MainMenu extends Phaser.Scene {
 
     const warning = this.add
       .text(
-        W / 2,
+        0,
         0,
         "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!",
         {
           fontFamily: "Arial",
           fontSize: `${warnSize}px`,
           color: "#ff3b3b",
-          align: "center",
-          wordWrap: { width: W - 46 }
+          align: "center"
         }
       )
       .setOrigin(0.5, 0);
 
-    const contentItems = [
-      title,
-      subtitle,
-      p1,
-      p2,
-      controlsTitle,
-      ...ctrlKeyTexts,
-      ...ctrlLabelTexts,
-      warning
-    ];
+    this._contentItems = [title, subtitle, p1, p2, controlsTitle, ...ctrlKeyTexts, ...ctrlLabelTexts, warning];
+    this._ctrlKeyTexts = ctrlKeyTexts;
+    this._ctrlLabelTexts = ctrlLabelTexts;
 
-    // 1) Layout funkcija (pēc faktiskajiem augstumiem)
-    const layoutOnce = () => {
-      let y = contentTop;
+    // ---------- Layout / Resize ----------
+    const applyLayout = (W, H) => {
+      const isD = isDesktop;
 
-      // VIRSRAKSTS — tu gribēji zemāk: to dara contentTop + GAPi
-      title.setPosition(W / 2, y);
-      y += title.height + GAP_M;
+      // bg cover
+      bg.setPosition(W / 2, H / 2);
+      const scaleBg = Math.max(W / bg.width, H / bg.height);
+      bg.setScale(scaleBg);
 
-      subtitle.setPosition(W / 2, y);
-      y += subtitle.height + GAP_L; // vairāk elpas starp sub un p1
+      // gradient
+      gg.clear();
+      gg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
+      gg.fillRect(0, Math.floor(H * 0.28), W, Math.ceil(H * 0.72));
 
-      // P1 zemāk (viena “rindkopa”): lielāks GAP_L iepriekš jau to izdara
-      p1.setPosition(W / 2, y);
-      y += p1.height + GAP_L; // platāka un simetriska šķirba uz p2
+      // wordWrap widths
+      p1.setWordWrapWidth(W - 46, true);
+      p2.setWordWrapWidth(W - 46, true);
+      warning.setWordWrapWidth(W - 46, true);
 
-      // P2 zemāk (viena “rindkopa”)
-      p2.setPosition(W / 2, y);
-      y += p2.height + GAP_L;
+      // >>> POGAS POZĪCIJA 1:1 kā Intro.js (tas ir tavs Windows misalignment fix)
+      const hintY = H - (isD ? 165 : 150);
+      const btnY = hintY + 75;
+      btnBg.setPosition(W / 2, btnY);
+      btnText.setPosition(W / 2, btnY);
 
-      // Kontrole bloks
-      controlsTitle.setPosition(ctrlLeft, y);
-      y += controlsTitle.height + GAP_S;
+      // content area bounds virs pogas
+      const btnTop = btnY - btnH / 2;
+      const contentTop = isD ? 78 : 56;
+      const contentBottomLimit = btnTop - (isD ? 26 : 18);
 
-      // rindas ar fiksētu line-height (nelietojam “space” izlīdzināšanu)
-      const lineH = isDesktop ? 34 : 32;
-      for (let i = 0; i < ctrlRows.length; i++) {
-        const rowY = y + i * lineH;
-        ctrlKeyTexts[i].setPosition(ctrlKeyX, rowY);
-        ctrlLabelTexts[i].setPosition(ctrlLabelX, rowY);
-      }
+      const GAP_S = isD ? 16 : 12;
+      const GAP_M = isD ? 26 : 18;
+      const GAP_L = isD ? 36 : 24;
 
-      const controlsBottom = y + ctrlRows.length * lineH;
+      const ctrlLeft = Math.round(W * (isD ? 0.28 : 0.22));
+      const ctrlKeyX = ctrlLeft;
+      const ctrlLabelX = ctrlLeft + (isD ? 46 : 44);
 
-      // Sarkanais teksts: pa vidu starp kontroles apakšu un pogas augšu
-      const warningY = Math.round((controlsBottom + contentBottomLimit) / 2);
-      warning.setPosition(W / 2, warningY);
+      const layoutOnce = () => {
+        let y = contentTop;
 
-      const warningBottom = warningY + warning.height;
-      return Math.max(controlsBottom, warningBottom);
+        title.setPosition(W / 2, y);
+        y += title.height + GAP_M;
+
+        subtitle.setPosition(W / 2, y);
+        y += subtitle.height + GAP_L;
+
+        p1.setPosition(W / 2, y);
+        y += p1.height + GAP_L;
+
+        p2.setPosition(W / 2, y);
+        y += p2.height + GAP_L;
+
+        controlsTitle.setPosition(ctrlLeft, y);
+        y += controlsTitle.height + GAP_S;
+
+        const lineH = isD ? 34 : 32;
+        for (let i = 0; i < ctrlRows.length; i++) {
+          const rowY = y + i * lineH;
+          ctrlKeyTexts[i].setPosition(ctrlKeyX, rowY);
+          ctrlLabelTexts[i].setPosition(ctrlLabelX, rowY);
+        }
+
+        const controlsBottom = y + ctrlRows.length * lineH;
+
+        const warningY = Math.round((controlsBottom + contentBottomLimit) / 2);
+        warning.setPosition(W / 2, warningY);
+
+        const warningBottom = warningY + warning.height;
+        return Math.max(controlsBottom, warningBottom);
+      };
+
+      const fitContent = () => {
+        this._contentItems.forEach((o) => o.setScale(1));
+        const bottom = layoutOnce();
+
+        const overflow = bottom - contentBottomLimit;
+        if (overflow > 0) {
+          const available = contentBottomLimit - contentTop;
+          const used = bottom - contentTop;
+          let s = available / used;
+          s = Math.max(0.88, Math.min(1.0, s - 0.02));
+          this._contentItems.forEach((o) => o.setScale(s));
+          layoutOnce();
+        }
+      };
+
+      fitContent();
     };
 
-    // 2) Fit: ja pārāk zemu, samazina saturu (nedaudz) un pārliek
-    const fitContent = () => {
-      contentItems.forEach(o => o.setScale(1));
+    // initial layout
+    applyLayout(this.scale.width, this.scale.height);
 
-      const bottom = layoutOnce();
-      const overflow = bottom - contentBottomLimit;
-
-      if (overflow > 0) {
-        const available = contentBottomLimit - contentTop;
-        const used = bottom - contentTop;
-
-        let s = available / used;
-        s = Math.max(0.88, Math.min(1.0, s - 0.02));
-
-        contentItems.forEach(o => o.setScale(s));
-        layoutOnce();
-      }
+    // resize handler (mobilais + Windows resizes)
+    this._onResize = (gameSize) => {
+      const W = gameSize.width;
+      const H = gameSize.height;
+      applyLayout(W, H);
     };
+    this.scale.on("resize", this._onResize);
 
-    fitContent();
+    // cleanup
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
+    this.events.once(Phaser.Scenes.Events.DESTROY, this.onShutdown, this);
+  }
+
+  onShutdown() {
+    // resize off
+    try {
+      if (this._onResize) this.scale.off("resize", this._onResize);
+    } catch (e) {}
+
+    // kill button tweens + listeners
+    try {
+      if (this._btnBg && this._btnText) {
+        this.tweens.killTweensOf([this._btnBg, this._btnText]);
+        this._btnBg.removeAllListeners();
+        this._btnBg.disableInteractive();
+      }
+    } catch (e) {}
+
+    // optional: kill any leftover tweens on menu items
+    try {
+      if (this._contentItems && this._contentItems.length) {
+        this._contentItems.forEach((o) => this.tweens.killTweensOf(o));
+      }
+    } catch (e) {}
   }
 }
+
+export default MainMenu;
