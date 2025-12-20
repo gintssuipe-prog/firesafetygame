@@ -1,4 +1,3 @@
-// stabils, gribu tagad pielikt copuright un sākuma fade
 class Intro extends Phaser.Scene {
   constructor() {
     super("Intro");
@@ -13,6 +12,8 @@ class Intro extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    const isDesktop = !!(this.sys.game.device && this.sys.game.device.os && this.sys.game.device.os.desktop);
+
     this.cameras.main.setBackgroundColor("#000000");
 
     // ===============================
@@ -24,31 +25,32 @@ class Intro extends Phaser.Scene {
 
     // ===============================
     // 2) Apakšējais gradient overlay (melns -> caurspīdīgs)
-    //    augšā: 0 alpha, apakšā: ~0.92 alpha
     // ===============================
-    const gradH = 280; // <- cik augstu gradients iet uz augšu (vari mainīt)
-    const rt = this.add.renderTexture(0, H - gradH, W, gradH).setOrigin(0);
-
-    const g = this.make.graphics({ x: 0, y: 0, add: false });
-    g.fillGradientStyle(
-      0x000000, // top-left
-      0x000000, // top-right
-      0x000000, // bottom-left
-      0x000000, // bottom-right
-      0.0, // alpha top-left (caurspīdīgs)
-      0.0, // alpha top-right
-      0.92, // alpha bottom-left (melns)
-      0.92 // alpha bottom-right
+    const gradH = 280;
+    const grad = this.add.graphics();
+    grad.fillGradientStyle(
+      0x000000, 0x000000, 0x000000, 0x000000,
+      0.0, 0.0, 0.92, 0.92
     );
-    g.fillRect(0, 0, W, gradH);
-    rt.draw(g);
-    g.destroy();
+    grad.fillRect(0, H - gradH, W, gradH);
 
     // ===============================
-    // 3) Hint + START poga (poga zem hint)
+    // 3) © teksts (augšā labajā stūrī)
     // ===============================
-    const hintY = H - 150; // hints paliek kā iepriekš
-    const btnY = hintY + 75; // ✅ START poga zem hint
+    this.add
+      .text(W - 12, 10, "©Gints Suipe", {
+        fontFamily: "Arial",
+        fontSize: "14px",
+        color: "#ffffff"
+      })
+      .setOrigin(1, 0)
+      .setAlpha(0.9);
+
+    // ===============================
+    // 4) Hint + START poga
+    // ===============================
+    const hintY = H - (isDesktop ? 165 : 150);
+    const btnY = hintY + 75;
 
     const hint = this.add
       .text(W / 2, hintY, "Spied START vai ENTER", {
@@ -61,7 +63,7 @@ class Intro extends Phaser.Scene {
     this.tweens.add({
       targets: hint,
       alpha: 0.15,
-      duration: 550,
+      duration: 650,
       yoyo: true,
       repeat: -1
     });
@@ -92,8 +94,19 @@ class Intro extends Phaser.Scene {
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
 
+    // ===============================
+    // 5) Start (drošs pret dubult-trigger)
+    // ===============================
+    let starting = false;
+
     const doStart = async () => {
-      // ✅ mūzika 1x uz visu spēli (pēc user gesture)
+      if (starting) return;
+      starting = true;
+
+      btnBg.disableInteractive();
+      if (this.input.keyboard) this.input.keyboard.enabled = false;
+
+      // mūzika 1x uz visu spēli (pēc user gesture)
       if (!this.sound.get("bgm")) {
         if (this.sound.context && this.sound.context.state === "suspended") {
           try {
@@ -107,7 +120,6 @@ class Intro extends Phaser.Scene {
       this.scene.start("MainMenu");
     };
 
-    // poga (touch/pele)
     btnBg.on("pointerdown", () => pressIn());
     btnBg.on("pointerup", () => {
       pressOut();
@@ -116,7 +128,13 @@ class Intro extends Phaser.Scene {
     btnBg.on("pointerout", () => pressOut());
     btnBg.on("pointercancel", () => pressOut());
 
-    // ENTER
     this.input.keyboard.once("keydown-ENTER", () => doStart());
+
+    // ===============================
+    // 6) FADE-IN no melna (lai bilde neuzlec)
+    // ===============================
+    // Piezīme: fade notiek PĒC create, bet vizuāli dod tieši to efektu.
+    // Ļoti lēts, nav smags.
+    this.cameras.main.fadeIn(350, 0, 0, 0);
   }
 }
