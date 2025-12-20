@@ -1,4 +1,4 @@
-// Stage1.js — slīpēta versija + stabilizācija + VIENKĀRŠS “cilvēciņš #2”
+// Stage1.js — slīpēta versija + stabilizācija + VIENKĀRŠS “cilvēciņš #2”  cepure tizli bet traadaa
 // ✅ UI: Laiks kreisajā augšā, Gatavs labajā augšā, lielāki fonti
 // ✅ Noņemti 2 mazie “plauktiņi” (šaurais seg1 gabals) 2. un 4. stāvā no augšas
 // ✅ Pārcelts viens aparāts uz “pavisam šauro” vidējo plauktiņu
