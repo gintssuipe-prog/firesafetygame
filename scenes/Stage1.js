@@ -1,4 +1,4 @@
-// Stage1.js — slīpēta versija pēc bildes prasībām:
+// Stage1.js — slīpēta versija pēc bildes prasībām:   stabils jau ar exit pogu
 // UI (Laiks kreisajā augšā, Gatavs labajā augšā, lielāki fonti)
 // Noņemti 2 mazie plauktiņi (šaurie seg1 gabali 2. un 4. stāvā no augšas)
 // Pārcelts konkrētais aparāts uz vidējo šauro plauktiņu
