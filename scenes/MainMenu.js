@@ -6,7 +6,7 @@ class MainMenu extends Phaser.Scene {
   preload() {
     // Fons no intro (tumšināsim ar alpha)
     if (!this.textures.exists("intro_bg")) {
-      this.load.image("intro_bg", "assets/img/intro.png");
+      this.load.image("intro_bg", "./assets/img/intro.png");
     }
   }
 
@@ -17,15 +17,12 @@ class MainMenu extends Phaser.Scene {
     // fons
     this.cameras.main.setBackgroundColor("#101a24");
 
-    // Fade IN (sākumā)
-    this.cameras.main.fadeIn(220, 0, 0, 0);
-
     // ---------- FONA BILDE (tā pati, kas intro), bet pavisam tumša ----------
     const bg = this.add.image(W / 2, H / 2, "intro_bg");
     // cover (aizpilda ekrānu, saglabājot proporciju)
     const scale = Math.max(W / bg.width, H / bg.height);
     bg.setScale(scale);
-    bg.setAlpha(0.14); // te regulē "cik tumši" redz bildi
+    bg.setAlpha(0.12); // te regulē "cik tumši" redz bildi
 
     // ---------- Apakšas tumšinājums ar gradientu (bez asas malas) ----------
     const g = this.add.graphics();
@@ -34,11 +31,13 @@ class MainMenu extends Phaser.Scene {
       0x000000, 0x000000, 0x000000, 0x000000,
       0.0,      0.0,      0.92,     0.92
     );
-    g.fillRect(0, Math.floor(H * 0.35), W, Math.ceil(H * 0.65));
+    g.fillRect(0, Math.floor(H * 0.30), W, Math.ceil(H * 0.70));
 
-    // ---------- TEKSTI ----------
-    const title = this.add
-      .text(W / 2, 110, "PASPĒT LAIKĀ", {
+    // ---------- TEKSTI (TIKAI tie, ko iedevi) ----------
+    const titleY = Math.round(H * 0.10);
+
+    this.add
+      .text(W / 2, titleY, "PASPĒT LAIKĀ", {
         fontFamily: "Arial",
         fontSize: "26px",
         color: "#ffffff",
@@ -46,58 +45,61 @@ class MainMenu extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const sub = this.add
-      .text(W / 2, 160, "Iejūties ugunsdrošības speciālista lomā!", {
+    this.add
+      .text(W / 2, titleY + 46, "Iejūties ugunsdrošības speciālista lomā!", {
         fontFamily: "Arial",
         fontSize: "18px",
         color: "#ffffff",
-        fontStyle: "bold"
+        fontStyle: "bold",
+        align: "center",
+        wordWrap: { width: Math.min(380, W - 40) }
       })
       .setOrigin(0.5);
 
     const bodyText =
-      "Savā busiņā pārbaudi un atjauno visus objektā\n" +
-      "esošos ugunsdzēšamos aparātus!\n\n" +
-      "Spēlējot, domā efektīvākās taktikas novecojušu\n" +
-      "termiņu ugunsdzēšamo aparātu atjaunošanā — vari\n" +
-      "vairākus aparātus sakrāt busā uz atjaunošanu, bet\n" +
-      "ne vairāk par sešiem vienlaicīgi.\n\n" +
-      "Dari kā vēlies — tavs mērķis pavadīt objektā pēc\n" +
-      "iespējas mazāk laika.\n\n" +
+      "Savā busiņā pārbaudi un atjauno visus objektā esošos ugunsdzēšamos aparātus!\n\n" +
+      "Objektā pavadi pēc iespējas mazāk laika!\n\n" +
       "KONTROLE:\n" +
-      "→  Pa labi\n" +
-      "←  Pa kreisi\n" +
-      "↑  Paņemt\n" +
-      "↓  Nolikt";
+      "->   PA labi\n" +
+      "<-   Pa kreisi\n" +
+      "A     Paņemt\n" +
+      "V      Nolikt";
+
+    // teksts pa kreisi (kā tavā piemērā)
+    const textX = Math.round(W * 0.16);
+    const textY = Math.round(H * 0.23);
 
     this.add
-      .text(W / 2, 330, bodyText, {
+      .text(textX, textY, bodyText, {
         fontFamily: "Arial",
         fontSize: "16px",
         color: "#e7edf5",
         align: "left",
-        lineSpacing: 6
+        lineSpacing: 8,
+        wordWrap: { width: Math.min(380, W - textX - 20) }
       })
-      .setOrigin(0.5, 0.5);
+      .setOrigin(0, 0);
 
+    // sarkanā atruna
     this.add
-      .text(W / 2, 585, "Visi spēles personāži, atribūti, loģika un\nlokācijas ir mākslinieka izdomājums!", {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ff3b3b",
-        align: "center"
-      })
+      .text(
+        W / 2,
+        Math.round(H * 0.66),
+        "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!",
+        {
+          fontFamily: "Arial",
+          fontSize: "16px",
+          color: "#ff3b3b",
+          align: "center",
+          wordWrap: { width: Math.min(380, W - 40) }
+        }
+      )
       .setOrigin(0.5);
 
-    // ---------- POGA (tāds pats stils kā Intro START), ēna nobīdīta pa labi ----------
-    const btnW = 260;
+    // ---------- POGA (IDENTISKA Intro stilam: bez ēnas) ----------
+    const btnW = Math.min(260, W - 80);
     const btnH = 64;
     const btnY = H - 110;
-
-    // ēna (nobīdīta pa labi / uz leju)
-    const shadow = this.add
-      .rectangle(W / 2 + 8, btnY + 8, btnW, btnH, 0x000000, 0.45)
-      .setOrigin(0.5);
 
     const btn = this.add
       .rectangle(W / 2, btnY, btnW, btnH, 0x1a3550, 1)
@@ -134,27 +136,16 @@ class MainMenu extends Phaser.Scene {
     };
 
     const goNext = () => {
-      // Fade OUT (beigās) + pāreja
-      this.cameras.main.fadeOut(180, 0, 0, 0);
-      this.time.delayedCall(190, () => this.scene.start("Stage1"));
+      this.scene.start("Stage1");
     };
 
-    btn.on("pointerdown", () => {
-      pressIn();
-    });
-
+    btn.on("pointerdown", () => pressIn());
     btn.on("pointerup", () => {
       pressOut();
       goNext();
     });
-
-    btn.on("pointerout", () => {
-      pressOut();
-    });
-
-    btn.on("pointercancel", () => {
-      pressOut();
-    });
+    btn.on("pointerout", () => pressOut());
+    btn.on("pointercancel", () => pressOut());
 
     // ENTER arī strādā
     this.input.keyboard.once("keydown-ENTER", goNext);
