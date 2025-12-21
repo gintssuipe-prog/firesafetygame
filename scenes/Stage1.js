@@ -1,3 +1,4 @@
+// ieliku drop  būs?
 // atkal izvilkts no kapa
 
 // izvilkts no kapa, resnas kājas, kantaina gaiša cepure
@@ -28,6 +29,31 @@ class Stage1 extends Phaser.Scene {
 
     // anim
     this.runT = 0; // “tipināšanas” fāze
+
+    // audio keys
+    this.SFX = {
+      pickup: "sfx_pickup",
+      drop: "sfx_drop"
+    };
+  }
+
+  preload() {
+    // Skaņas (ir repā: assets/audio/pickup.mp3 un assets/audio/drop.mp3)
+    // Ceļš atstāts relatīvs, lai strādā gan lokāli (http server), gan GitHub Pages.
+    this.load.audio(this.SFX.pickup, "assets/audio/pickup.mp3");
+    this.load.audio(this.SFX.drop, "assets/audio/drop.mp3");
+  }
+
+  playSfx(key, cfg = {}) {
+    // Mobile/safari gadījumā audio var būt “locked” līdz pirmajam lietotāja žestam.
+    // Intro/Menu jau parasti to atbloķē, bet te ir drošs “nekrītam” variants.
+    try {
+      if (!this.sound || !this.sound.locked) {
+        this.sound.play(key, { volume: 0.6, ...cfg });
+      }
+    } catch (e) {
+      // klusām ignorējam – spēle nedrīkst lūzt dēļ audio
+    }
   }
 
   create() {
@@ -566,10 +592,16 @@ class Stage1 extends Phaser.Scene {
     best.body.enable = false;
     best.setDepth(this.DEPTH.carry);
     this.carrying = best;
+
+    // ✅ SFX: pickup
+    this.playSfx(this.SFX.pickup, { volume: 0.65 });
   }
 
   tryDrop() {
     if (!this.carrying) return;
+
+    // ✅ SFX: drop (tikai tad, ja reāli bija ko nolikt)
+    this.playSfx(this.SFX.drop, { volume: 0.65 });
 
     const ex = this.carrying;
     ex.setData("held", false);
@@ -736,7 +768,7 @@ class Stage1 extends Phaser.Scene {
     c._vecLayer = vec;
 
     // Krāsas
-    const hatColor = 0x2a2f33;      // tumša, bet ne “absolūti melna”
+    const hatColor = 0x2a2f33; // tumša, bet ne “absolūti melna”
     const skinColor = 0xd8b08b;
     const legColor = 0x1a1a1a;
 
@@ -744,7 +776,7 @@ class Stage1 extends Phaser.Scene {
     // Pozicionēta tuvāk galvai (virs galvas “augšas”).
     // Facing tiek panākts ar vec.scaleX = 1 / -1, tāpēc “nags” vienmēr skatās uz skriešanas virzienu.
     const crown = this.add.rectangle(0, -69, 14, 8, hatColor, 1); // kronis uz galvas
-    const brim  = this.add.rectangle(10, -66, 18, 4, hatColor, 1); // “nags” uz priekšu (x>0)
+    const brim = this.add.rectangle(10, -66, 18, 4, hatColor, 1); // “nags” uz priekšu (x>0)
 
     // ---- Rokas: šaurāki trīsstūri ----
     // Priekšējā roka (virzienā uz skriešanu)
@@ -779,8 +811,8 @@ class Stage1 extends Phaser.Scene {
 
     // ---- Kājas (kluči) ----
     const legBaseY = -6;
-const legL = this.add.rectangle(-9, legBaseY, 14, 16, legColor, 1);
-const legR = this.add.rectangle(9,  legBaseY, 14, 16, legColor, 1);
+    const legL = this.add.rectangle(-9, legBaseY, 14, 16, legColor, 1);
+    const legR = this.add.rectangle(9, legBaseY, 14, 16, legColor, 1);
 
     c._legL = legL;
     c._legR = legR;
@@ -884,6 +916,7 @@ const legR = this.add.rectangle(9,  legBaseY, 14, 16, legColor, 1);
       const tx = this.textures.createCanvas(key, w, h);
       const ctx = tx.getContext();
       painter(ctx, w, h);
+      tx.refresh();
       tx.refresh();
     };
 
