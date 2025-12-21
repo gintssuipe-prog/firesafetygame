@@ -1,4 +1,4 @@
-// ieliku drop  būs?
+// ieliku drop  būs?   ir!!!
 // atkal izvilkts no kapa
 
 // izvilkts no kapa, resnas kājas, kantaina gaiša cepure
