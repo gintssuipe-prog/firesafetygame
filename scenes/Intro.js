@@ -31,7 +31,7 @@ class Intro extends Phaser.Scene {
     this._grad = grad;
 
     const copyright = this.add
-      .text(0, 10, "©Gints Suipe", {
+      .text(0, 10, "© Gints Suipe  BETA Launch", {
         fontFamily: "Arial",
         fontSize: "14px",
         color: "#ffffff"
