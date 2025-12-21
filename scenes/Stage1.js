@@ -733,7 +733,7 @@ class Stage1 extends Phaser.Scene {
     c._vecLayer = vec;
 
     // Krāsas
-    const hatColor = 0x1b222a;      // tumša, bet ne “absolūti melna”
+    const hatColor = 0x2a2f33;      // tumša, bet ne “absolūti melna”
     const skinColor = 0xd8b08b;
     const legColor = 0x1a1a1a;
 
@@ -776,8 +776,8 @@ class Stage1 extends Phaser.Scene {
 
     // ---- Kājas (kluči) ----
     const legBaseY = -6;
-    const legL = this.add.rectangle(-6, legBaseY, 8, 16, legColor, 1);
-    const legR = this.add.rectangle(6, legBaseY, 8, 16, legColor, 1);
+ const legL = this.add.rectangle(-7, legBaseY, 10, 16, legColor, 1);
+ const legR = this.add.rectangle(7,  legBaseY, 10, 16, legColor, 1);
 
     c._legL = legL;
     c._legR = legR;
