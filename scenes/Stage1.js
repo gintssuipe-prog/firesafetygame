@@ -776,8 +776,8 @@ class Stage1 extends Phaser.Scene {
 
     // ---- Kājas (kluči) ----
     const legBaseY = -6;
- const legL = this.add.rectangle(-7, legBaseY, 10, 16, legColor, 1);
- const legR = this.add.rectangle(7,  legBaseY, 10, 16, legColor, 1);
+const legL = this.add.rectangle(-9, legBaseY, 14, 16, legColor, 1);
+const legR = this.add.rectangle(9,  legBaseY, 14, 16, legColor, 1);
 
     c._legL = legL;
     c._legR = legR;
