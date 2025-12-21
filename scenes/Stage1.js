@@ -1,3 +1,4 @@
+// atkal izvilkts no kapa
 
 // izvilkts no kapa, resnas kājas, kantaina gaiša cepure
 // Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana”  kantaina cepure aizgaaja
