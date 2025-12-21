@@ -1,5 +1,8 @@
+
 // izvilkts no kapa, resnas kājas, kantaina gaiša cepure
-// St...), tuvāk galvai
+// Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana”  kantaina cepure aizgaaja
+// ✅ Saglabāts: stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
+// ✅ Cepure: 2 taisnstūri (kronis + nags), vektors, tumša (ne pilnīgi melna), tuvāk galvai
 // ✅ Rokas: šaurāki trīsstūri
 // ✅ Kājas: kluči ar tipināšanas animāciju skrienot
 
@@ -12,6 +15,15 @@ class Stage1 extends Phaser.Scene {
     this.totalCount = 10;
 
     this.touch = { left: false, right: false, up: false, down: false };
+
+    this.facing = 1; // 1=pa labi, -1=pa kreisi
+    this.startTimeMs = 0;
+    this.finished = false;
+    this.prevElevY = 0;
+
+    // buss
+    this.busStorage = [];
+    this.BUS_CAPACITY = 6;
 
     // anim
     this.runT = 0; // “tipināšanas” fāze
@@ -28,33 +40,9 @@ class Stage1 extends Phaser.Scene {
     // fons
     this.cameras.main.setBackgroundColor("#101a24");
 
-    // --- SFX (skaņas) ---
-    // Ieliec failus šeit:
-    //   assets/audio/pickup.mp3
-    //   assets/audio/drop.mp3
-    // Ja nosaukumi atšķiras – nomaini ceļus zemāk.
-    const needPickup = !this.cache.audio.exists("sfx_pickup");
-    const needDrop = !this.cache.audio.exists("sfx_drop");
+    this.physics.world.gravity.y = 900;
 
-    if (needPickup) this.load.audio("sfx_pickup", "assets/audio/pickup.mp3");
-    if (needDrop) this.load.audio("sfx_drop", "assets/audio/drop.mp3");
-
-    const createSfx = () => {
-      if (!this.sfxPickup && this.cache.audio.exists("sfx_pickup")) {
-        this.sfxPickup = this.sound.add("sfx_pickup", { volume: 0.8 });
-      }
-      if (!this.sfxDrop && this.cache.audio.exists("sfx_drop")) {
-        this.sfxDrop = this.sound.add("sfx_drop", { volume: 0.8 });
-      }
-    };
-
-    if (needPickup || needDrop) {
-      this.load.once("complete", createSfx);
-      this.load.start();
-    } else {
-      createSfx();
-    }
-
+    // Slāņi
     this.DEPTH = {
       stickers: 2,
       platforms: 10,
@@ -71,47 +59,51 @@ class Stage1 extends Phaser.Scene {
     // ✅ uzģenerējam gradient-tekstūras (vienreiz)
     this.buildGradientTextures();
 
-    // ---- Gravitācija ----
-    this.physics.world.gravity.y = 900;
+    // ---- Grīdas (5 stāvi) ----
+    const topY = 130;
+    const bottomY = this.playH - 35;
 
-    // ---- Pasaule robežas (tikai spēles laukums) ----
-    this.physics.world.setBounds(0, 0, W, this.playH);
-    this.cameras.main.setBounds(0, 0, W, this.playH);
-
-    // ---- Grīda + platformas ----
+    this.FLOORS_Y = [];
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4;
+      this.FLOORS_Y.push(Phaser.Math.Linear(topY, bottomY, t));
+    }
     this.THICK = 18;
-    this.FLOORS_Y = [
-      Math.round(this.playH * 0.20),
-      Math.round(this.playH * 0.35),
-      Math.round(this.playH * 0.50),
-      Math.round(this.playH * 0.65),
-      Math.round(this.playH * 0.86)
-    ];
 
-    // platformu grupa
+    // ---- Platformas (Image + static body) ----
     this.platforms = this.physics.add.staticGroup();
 
-    // ārējā “grīda” (apakšējā)
+    // 1. stāvs pilnā platumā
     this.addPlatform(0, this.FLOORS_Y[4], W, this.THICK);
 
-    // iekšējie stāvi ar šahtām
-    const holeW = 92;
-    const holeX = Math.round(W * 0.20);
+    // Lifts/šahta
+    this.elevatorWidth = 70;
+    this.elevatorX = Math.round(W * 0.62);
+    this.shaftGapW = this.elevatorWidth + 26;
 
-    // vietām noņemam šauro segmentu (lai būtu “tīrāk”)
-    const REMOVE_NARROW_SEG_ON = new Set([2]);
+    // 2–5 stāvs ar šahtas caurumu labajā pusē
+    const rightStartX = Math.round(W * 0.42);
+    const holeL = this.elevatorX - this.shaftGapW / 2;
+    const holeR = this.elevatorX + this.shaftGapW / 2;
+
+    // šaurā “seg1” centra x (tas ir tas “pavisam šaurais plauktiņš”)
+    const seg1W_base = holeL - rightStartX;
+    this.NARROW_MID_X = Math.round(rightStartX + seg1W_base / 2);
+
+    // Noņemam 2 konkrētus mazos plauktiņus (šaurais seg1 gabals)
+    // i = 0..3 attiecas uz augšējiem 4 stāviem: FLOORS_Y[0..3]
+    // Te noņemam i=1 un i=3 (vizuāli: 2. un 4. stāvs no augšas)
+    const REMOVE_NARROW_SEG_ON = new Set([1, 3]);
 
     for (let i = 0; i < 4; i++) {
       const y = this.FLOORS_Y[i];
-      const holeL = holeX;
-      const holeR = holeX + holeW;
 
-      // kreisais gabals
-      if (holeL > 12) this.addPlatform(0, y, holeL, this.THICK);
+      // kreisās puses šaurā maliņa
+      const leftLedgeX = 26;
+      const leftLedgeW = 74;
+      this.addPlatform(leftLedgeX, y, leftLedgeW, this.THICK);
 
-      // labais gabals, ar “mazo” segmentu
-      const rightStartX = holeR;
-
+      // labā puse ar caurumu šahtai
       const seg1W = holeL - rightStartX;
       if (seg1W > 12 && !REMOVE_NARROW_SEG_ON.has(i)) {
         // “mazais zilais plauktiņš” pie šahtas (noņemam izvēlētos)
@@ -128,232 +120,404 @@ class Stage1 extends Phaser.Scene {
     this.BUS.x = 0;
     this.BUS.y = Math.round(this.FLOORS_Y[4] - this.BUS.h + 10);
 
-    // zona, kur “krāmēt busā”
-    this.busZone = new Phaser.Geom.Rectangle(
-      this.BUS.x + 10,
-      this.BUS.y + 10,
-      this.BUS.w - 20,
-      this.BUS.h - 20
-    );
-
-    // buss kā sprite no ģenerētas tekstūras
-    this.bus = this.add
+    const busImg = this.add
       .image(this.BUS.x + this.BUS.w / 2, this.BUS.y + this.BUS.h / 2, "tex_bus")
+      .setDisplaySize(this.BUS.w, this.BUS.h)
       .setDepth(this.DEPTH.bus);
 
-    // busa slots (iekšā)
-    this.BUS_CAPACITY = 6;
+    this.add
+      .text(busImg.x, this.BUS.y + 8, "BUSS", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#0b0f14",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(this.DEPTH.bus + 1);
+
+    // ✅ RITENIS (paliek kā bija)
+    const wheelX = this.BUS.x + Math.round(this.BUS.w * 0.55);
+    const wantedWheelY = this.BUS.y + this.BUS.h + 16;
+    const wheelY = Math.min(this.playH - 12, wantedWheelY);
+
+    this.add.image(wheelX, wheelY, "tex_wheel").setDisplaySize(42, 42).setDepth(this.DEPTH.bus - 2);
+    this.add.image(wheelX, wheelY, "tex_wheelHub").setDisplaySize(22, 22).setDepth(this.DEPTH.bus - 1);
+
+    // bus “zona”
+    this.busZone = new Phaser.Geom.Rectangle(this.BUS.x, this.BUS.y, this.BUS.w, this.BUS.h);
+
+    // 6 vietas busā (bez stroke)
     this.busSlots = [];
-    this.busStorage = [];
-
-    const padX = 18;
-    const padY = 18;
-    const cols = 3;
-    const rows = 2;
-    const cellW = (this.busZone.width - padX * 2) / cols;
-    const cellH = (this.busZone.height - padY * 2) / rows;
-
+    const cols = 3,
+      rows = 2;
+    const padX = 18,
+      padY = 28;
+    const cellW = (this.BUS.w - padX * 2) / cols;
+    const cellH = (this.BUS.h - padY * 2) / rows;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const x = this.busZone.x + padX + cellW * (c + 0.5);
-        const y = this.busZone.y + padY + cellH * (r + 0.5);
+        const x = this.BUS.x + padX + c * cellW + cellW / 2;
+        const y = this.BUS.y + padY + r * cellH + cellH / 2;
         this.busSlots.push({ x, y, used: false });
+        this.add.rectangle(x, y, 18, 18, 0x0b0f14, 0.12).setDepth(this.DEPTH.bus);
       }
     }
 
-    // ---- Šahta (lifts) ----
-    this.shaftX = holeX + holeW / 2;
+    // ---- LIFTS platforma (gradient Image + dynamic body) ----
+    const topOvershoot = 26;
+    this.elevatorMinSurfaceY = this.FLOORS_Y[0] - topOvershoot;
+    this.elevatorMaxSurfaceY = this.FLOORS_Y[4];
 
-    // elevator platforma (kustīga)
+    this.elevatorSpeed = 58;
+    this.elevatorDir = -1;
+
     this.elevator = this.add
-      .rectangle(this.shaftX, this.FLOORS_Y[4] - 44, holeW - 10, 14, 0x3a546f)
+      .image(this.elevatorX, this.elevatorMaxSurfaceY + this.THICK / 2, "tex_elevator")
+      .setDisplaySize(this.elevatorWidth, this.THICK)
       .setDepth(this.DEPTH.elevator);
 
-    this.physics.add.existing(this.elevator, true);
-    this.elevator.body.setSize(holeW - 10, 14);
+    this.physics.add.existing(this.elevator);
+    this.elevator.body.setAllowGravity(false);
+    this.elevator.body.setImmovable(true);
+    this.prevElevY = this.elevator.y;
 
-    // kustības parametri
-    this.elevatorFloor = 4;
-    this.elevatorMoving = false;
-
-    // ---- Spēlētājs (cilvēciņš) ----
-    this.player = this.add.container(Math.round(W * 0.55), this.FLOORS_Y[4] - 60);
+    // ---- Spēlētājs (stabils + vektoru cepure/rokas/kājas) ----
+    this.player = this.makePlayer(Math.round(W * 0.22), this.FLOORS_Y[4]);
     this.player.setDepth(this.DEPTH.player);
-
-    // ķermenis no vektoriem / tekstūrām
-    this.buildPlayerVisual();
 
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
-    this.player.body.setBounce(0);
-    this.player.body.setSize(26, 44);
-    this.player.body.setOffset(-13, -44);
+    this.player.body.setSize(28, 54);
+    this.player.body.setOffset(-14, -54);
 
-    // virziens
-    this.facing = 1;
+    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.elevator);
 
-    // ---- Ugunsdzēšamie ----
+    // ---- Aparāti + “uzlīmju” sloti ----
     this.extinguishers = this.physics.add.group();
+    this.slots = [];
 
-    // izkaisām 10 gab.
-    const spawnPoints = [
-      { x: Math.round(W * 0.55), y: this.FLOORS_Y[4] - 40 },
-      { x: Math.round(W * 0.70), y: this.FLOORS_Y[4] - 40 },
-      { x: Math.round(W * 0.85), y: this.FLOORS_Y[4] - 40 },
+    const spots = this.makeSpotsPortrait(W);
 
-      { x: Math.round(W * 0.55), y: this.FLOORS_Y[3] - 40 },
-      { x: Math.round(W * 0.75), y: this.FLOORS_Y[3] - 40 },
+    spots.forEach((s) => {
+      const floorSurfaceY = this.FLOORS_Y[s.floor];
+      const extY = floorSurfaceY - 22;
 
-      { x: Math.round(W * 0.55), y: this.FLOORS_Y[2] - 40 },
-      { x: Math.round(W * 0.80), y: this.FLOORS_Y[2] - 40 },
+      // uzlīme virs aparāta
+      const stickerY = extY - 54;
+      const sticker = this.add.rectangle(s.x, stickerY, 14, 14, 0xb42020, 0.85).setDepth(this.DEPTH.stickers);
 
-      { x: Math.round(W * 0.55), y: this.FLOORS_Y[1] - 40 },
-      { x: Math.round(W * 0.78), y: this.FLOORS_Y[1] - 40 },
+      const slot = { x: s.x, y: extY, sticker, used: false };
+      this.slots.push(slot);
 
-      { x: Math.round(W * 0.55), y: this.FLOORS_Y[0] - 40 }
-    ];
-
-    for (let i = 0; i < this.totalCount; i++) {
-      const p = spawnPoints[i % spawnPoints.length];
-
-      const ex = this.add.image(p.x, p.y, "tex_ext_ok").setDepth(this.DEPTH.ext);
-      this.physics.add.existing(ex);
-      ex.body.setCollideWorldBounds(true);
-      ex.body.setBounce(0);
-      ex.body.setSize(18, 34);
-      ex.body.setOffset(-9, -17);
+      const ex = this.makeExtinguisher(s.x, extY, "NOK");
+      ex.setDepth(this.DEPTH.ext);
 
       ex.setData("held", false);
       ex.setData("slotRef", null);
       ex.setData("inBus", false);
       ex.setData("busIndex", -1);
 
-      // stāvoklis (OK / BAD)
-      this.setExtState(ex, "BAD");
-
+      this.setExtState(ex, "NOK");
       this.extinguishers.add(ex);
-    }
-
-    // ---- Slotu vietas (pareizās vietas) ----
-    this.slots = [];
-    const slotY = this.FLOORS_Y[0] - 42;
-    const slotX0 = Math.round(W * 0.62);
-    const slotGap = 32;
-
-    for (let i = 0; i < this.totalCount; i++) {
-      const x = slotX0 + (i % 6) * slotGap;
-      const y = slotY + Math.floor(i / 6) * 44;
-
-      const s = this.add.image(x, y, "tex_slot").setDepth(this.DEPTH.stickers);
-      s.setAlpha(0.85);
-      s.used = false;
-      this.slots.push(s);
-    }
-
-    // ---- Sadursmes ----
-    this.physics.add.collider(this.player, this.platforms);
-    this.physics.add.collider(this.player, this.elevator);
+    });
 
     this.physics.add.collider(this.extinguishers, this.platforms);
     this.physics.add.collider(this.extinguishers, this.elevator);
 
-    // ---- Input ----
-    this.keys = this.input.keyboard.addKeys({
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S
-    });
+    this.totalCount = this.slots.length;
 
-    // ---- UI apakšā ----
-    const uiY = this.playH;
+    // ---- UI (bez fona) ----
+    const uiStyle = this.uiStylePlain();
 
-    this.add
-      .rectangle(W / 2, uiY + this.controlsH / 2, W, this.controlsH, 0x0c121a)
-      .setDepth(this.DEPTH.ui);
+    this.timeText = this.add.text(12, 10, "Laiks: 00:00", uiStyle).setDepth(this.DEPTH.ui);
 
-    // HUD augšā
     this.readyText = this.add
-      .text(16, 12, `Gatavs: ${this.readyCount}/${this.totalCount}`, this.uiStylePlain())
+      .text(W - 12, 10, `Gatavs: 0/${this.totalCount}`, uiStyle)
+      .setOrigin(1, 0)
       .setDepth(this.DEPTH.ui);
 
-    // POGAS (touch)
-    const btnY = uiY + 60;
-    this.makeTouchButtons(W, btnY);
+    // ---- Kontroles (telefons) ----
+    this.createPortraitControls();
 
-    // Pamācība
-    this.helpText = this.add
-      .text(
-        16,
-        uiY + 118,
-        "W: pacelt/paņemt (lifts uz augšu)\nS: nolikt (lifts uz leju)\nA/D: kustība\nSavāc un saliec ugunsdzēšamos pareizajās vietās!",
-        this.uiStyleSmall()
-      )
-      .setDepth(this.DEPTH.ui);
+    // ---- EXIT poga pa vidu kontroles zonā ----
+    this.createExitButton();
 
-    // EXIT poga (kā bija)
-    this.makeExitButton(W, uiY);
+    // ---- Keyboard ----
+    this.cursors = this.input.keyboard.createCursorKeys();
 
-    // ---- Elevator vadība (kustība starp stāviem) ----
-    this.input.keyboard.on("keydown-W", () => {
-      // W = pacelt / lifts uz augšu, bet spēlē: pickup
-      this.tryPickup();
-    });
-
-    this.input.keyboard.on("keydown-S", () => {
-      // S = nolikt
-      this.tryDrop();
-    });
+    this.startTimeMs = this.time.now;
   }
 
   update(time, delta) {
-    // touch stāvokļi
-    const leftPressed = this.keys.left.isDown || this.touch.left;
-    const rightPressed = this.keys.right.isDown || this.touch.right;
-    const upPressed = Phaser.Input.Keyboard.JustDown(this.keys.up) || this.touch.up;
-    const downPressed = Phaser.Input.Keyboard.JustDown(this.keys.down) || this.touch.down;
+    if (!this.finished) {
+      const totalSec = Math.floor((time - this.startTimeMs) / 1000);
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+      const ss = String(totalSec % 60).padStart(2, "0");
+      this.timeText.setText(`Laiks: ${mm}:${ss}`);
+    }
 
-    // reset “one-shot” touch pogām
-    this.touch.up = false;
-    this.touch.down = false;
+    // lifts
+    const dt = delta / 1000;
+    const minCenterY = this.elevatorMinSurfaceY + this.THICK / 2;
+    const maxCenterY = this.elevatorMaxSurfaceY + this.THICK / 2;
 
-    const speed = 220;
+    this.elevator.y += this.elevatorSpeed * dt * this.elevatorDir;
+    if (this.elevator.y <= minCenterY) {
+      this.elevator.y = minCenterY;
+      this.elevatorDir = 1;
+    }
+    if (this.elevator.y >= maxCenterY) {
+      this.elevator.y = maxCenterY;
+      this.elevatorDir = -1;
+    }
 
-    if (leftPressed) {
-      this.player.body.setVelocityX(-speed);
-      this.facing = -1;
-    } else if (rightPressed) {
-      this.player.body.setVelocityX(speed);
-      this.facing = 1;
+    this.elevator.body.updateFromGameObject();
+    const elevDeltaY = this.elevator.y - this.prevElevY;
+    this.prevElevY = this.elevator.y;
+
+    // kustība
+    let movingLR = false;
+    if (!this.finished) {
+      const left = this.cursors.left.isDown || this.touch.left;
+      const right = this.cursors.right.isDown || this.touch.right;
+      const speed = 230;
+
+      if (left) {
+        this.player.body.setVelocityX(-speed);
+        this.facing = -1;
+        movingLR = true;
+      } else if (right) {
+        this.player.body.setVelocityX(speed);
+        this.facing = 1;
+        movingLR = true;
+      } else {
+        this.player.body.setVelocityX(0);
+      }
     } else {
       this.player.body.setVelocityX(0);
     }
 
-    // “tipināšana” skrienot
-    const moving = Math.abs(this.player.body.velocity.x) > 10;
-    if (moving) {
-      this.runT += delta * 0.02;
-    } else {
-      this.runT = 0;
+    // ✅ vektoru “cepure/rokas” virzienā + kāju tipināšana
+    this.updatePlayerVisuals(delta, movingLR);
+
+    // paņem/noliec
+    if (!this.finished) {
+      const upPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up) || this.consumeTouch("up");
+      const downPressed = Phaser.Input.Keyboard.JustDown(this.cursors.down) || this.consumeTouch("down");
+      if (upPressed) this.tryPickup();
+      if (downPressed) this.tryDrop();
     }
-    this.applyLegAnim(moving);
 
-    // W/S pickup/drop
-    if (upPressed) this.tryPickup();
-    if (downPressed) this.tryDrop();
-
-    // ja nesam, turam līdzi
+    // aparāts rokās
     if (this.carrying) {
-      this.carrying.x = this.player.x + 18 * this.facing;
-      this.carrying.y = this.player.y - 22;
+      const sideOffset = 24;
+      this.carrying.x = this.player.x + sideOffset * this.facing;
+      this.carrying.y = this.player.y - 30;
       this.carrying.setDepth(this.DEPTH.carry);
     }
 
-    // elevator ķermenis jāseko
-    if (this.elevator && this.elevator.body) {
-      this.elevator.body.position.x = this.elevator.x - this.elevator.width / 2;
-      this.elevator.body.position.y = this.elevator.y - this.elevator.height / 2;
+    // brauc līdzi liftam
+    const onElev =
+      this.player.body.touching.down &&
+      this.elevator.body.touching.up &&
+      Math.abs(this.player.body.bottom - this.elevator.body.top) <= 3;
+
+    if (onElev) {
+      this.player.y += elevDeltaY;
+      if (this.carrying) this.carrying.y += elevDeltaY;
     }
+  }
+
+  updatePlayerVisuals(delta, movingLR) {
+    if (!this.player) return;
+
+    // 1) pagriežam vektoru elementus pēc facing
+    if (this.player._vecLayer) {
+      this.player._vecLayer.scaleX = this.facing; // 1 vai -1
+    }
+
+    // 2) kāju “tipināšana”
+    if (!this.player._legL || !this.player._legR) return;
+
+    if (movingLR) {
+      this.runT += delta * 0.018; // ātrums
+      const a = Math.sin(this.runT);
+      const b = Math.sin(this.runT + Math.PI);
+
+      this.player._legL.y = this.player._legBaseY + Math.round(a * 3);
+      this.player._legR.y = this.player._legBaseY + Math.round(b * 3);
+
+      if (this.player._armL && this.player._armR) {
+        this.player._armL.y = this.player._armBaseY + Math.round(b * 2);
+        this.player._armR.y = this.player._armBaseY + Math.round(a * 2);
+      }
+    } else {
+      this.player._legL.y = this.player._legBaseY;
+      this.player._legR.y = this.player._legBaseY;
+      if (this.player._armL && this.player._armR) {
+        this.player._armL.y = this.player._armBaseY;
+        this.player._armR.y = this.player._armBaseY;
+      }
+    }
+  }
+
+  // ---------------- Controls helpers ----------------
+  consumeTouch(key) {
+    if (this.touch[key]) {
+      this.touch[key] = false;
+      return true;
+    }
+    return false;
+  }
+
+  createPortraitControls() {
+    const W = this.scale.width;
+    const areaTop = this.playH;
+    const areaH = this.controlsH;
+
+    this.add
+      .rectangle(W / 2, areaTop + areaH / 2, W, areaH, 0x081018, 0.95)
+      .setScrollFactor(0)
+      .setDepth(this.DEPTH.controls);
+
+    const R = 46;
+
+    const mkBtn = (cx, cy, label) => {
+      const circle = this.add
+        .circle(cx, cy, R, 0x142334, 1)
+        .setScrollFactor(0)
+        .setDepth(this.DEPTH.controls + 1)
+        .setInteractive({ useHandCursor: true });
+
+      const t = this.add
+        .text(cx, cy, label, {
+          fontFamily: "Arial",
+          fontSize: "26px",
+          color: "#e7edf5",
+          fontStyle: "bold"
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(this.DEPTH.controls + 2);
+
+      circle._label = t;
+      return circle;
+    };
+
+    const leftX = 70;
+    const yMid = areaTop + areaH / 2;
+
+    const btnLeft = mkBtn(leftX, yMid - 45, "←");
+    const btnDown = mkBtn(leftX, yMid + 45, "↓");
+
+    const rightX = W - 70;
+    const btnRight = mkBtn(rightX, yMid - 45, "→");
+    const btnUp = mkBtn(rightX, yMid + 45, "↑");
+
+    const pressIn = (btn) => {
+      btn.setFillStyle(0x1d3a55, 1);
+      this.tweens.add({ targets: [btn, btn._label], scaleX: 0.96, scaleY: 0.96, duration: 60 });
+    };
+    const pressOut = (btn) => {
+      btn.setFillStyle(0x142334, 1);
+      this.tweens.add({ targets: [btn, btn._label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
+    };
+
+    const bindHold = (btn, key) => {
+      btn.on("pointerdown", () => {
+        this.touch[key] = true;
+        pressIn(btn);
+      });
+      btn.on("pointerup", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
+      btn.on("pointerout", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
+      btn.on("pointercancel", () => {
+        this.touch[key] = false;
+        pressOut(btn);
+      });
+    };
+
+    const bindTap = (btn, key) => {
+      btn.on("pointerdown", () => {
+        this.touch[key] = true;
+        pressIn(btn);
+      });
+      btn.on("pointerup", () => pressOut(btn));
+      btn.on("pointerout", () => pressOut(btn));
+      btn.on("pointercancel", () => pressOut(btn));
+    };
+
+    bindHold(btnLeft, "left");
+    bindHold(btnRight, "right");
+    bindTap(btnUp, "up");
+    bindTap(btnDown, "down");
+  }
+
+  createExitButton() {
+    const W = this.scale.width;
+    const areaTop = this.playH;
+    const areaH = this.controlsH;
+
+    const cx = Math.round(W / 2);
+    const cy = Math.round(areaTop + areaH / 2);
+
+    const R = 44;
+
+    const btn = this.add
+      .circle(cx, cy, R, 0xb90f0f, 1)
+      .setScrollFactor(0)
+      .setDepth(this.DEPTH.controls + 3)
+      .setInteractive({ useHandCursor: true });
+
+    const label = this.add
+      .text(cx, cy, "EXIT", {
+        fontFamily: "Arial",
+        fontSize: "22px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(this.DEPTH.controls + 4);
+
+    const pressIn = () => {
+      btn.setFillStyle(0xd61a1a, 1);
+      this.tweens.add({ targets: [btn, label], scaleX: 0.96, scaleY: 0.96, duration: 60 });
+    };
+
+    const pressOut = () => {
+      btn.setFillStyle(0xb90f0f, 1);
+      this.tweens.add({ targets: [btn, label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
+    };
+
+    const doExit = () => {
+      try {
+        window.open("", "_self");
+        window.close();
+      } catch (e) {}
+
+      try {
+        this.game.destroy(true);
+      } catch (e) {}
+
+      try {
+        window.location.href = "about:blank";
+      } catch (e) {}
+    };
+
+    btn.on("pointerdown", () => pressIn());
+    btn.on("pointerup", () => {
+      pressOut();
+      doExit();
+    });
+    btn.on("pointerout", () => pressOut());
+    btn.on("pointercancel", () => pressOut());
   }
 
   // ---------------- Gameplay: pickup/drop ----------------
@@ -371,20 +535,20 @@ class Stage1 extends Phaser.Scene {
       if (ex.getData("held")) return;
 
       const d = Phaser.Math.Distance.Between(px, py, ex.x, ex.y);
-      if (d < bestD) {
-        bestD = d;
+      if (d < 58 && d < bestD) {
         best = ex;
+        bestD = d;
       }
     });
 
     if (!best) return;
-    if (bestD > 70) return;
 
-    // ja bija slotā, atbrīvo slotu
-    const slot = best.getData("slotRef");
-    if (slot) {
-      slot.used = false;
+    const slotRef = best.getData("slotRef");
+    if (slotRef) {
+      slotRef.used = false;
+      slotRef.sticker.setFillStyle(0xb42020, 0.85);
       best.setData("slotRef", null);
+
       this.readyCount = Math.max(0, this.readyCount - 1);
       this.readyText.setText(`Gatavs: ${this.readyCount}/${this.totalCount}`);
     }
@@ -401,16 +565,10 @@ class Stage1 extends Phaser.Scene {
     best.body.enable = false;
     best.setDepth(this.DEPTH.carry);
     this.carrying = best;
-
-    // skaņa: paņem
-    if (this.sfxPickup) this.sfxPickup.play();
   }
 
   tryDrop() {
     if (!this.carrying) return;
-
-    // skaņa: noliek
-    if (this.sfxDrop) this.sfxDrop.play();
 
     const ex = this.carrying;
     ex.setData("held", false);
@@ -452,153 +610,84 @@ class Stage1 extends Phaser.Scene {
       return;
     }
 
-    // SLOTI (pareizās vietas)
-    const hitSlot = this.slots.find((s) => {
-      if (s.used) return false;
-      const d = Phaser.Math.Distance.Between(ex.x, ex.y, s.x, s.y);
-      return d < 28;
-    });
+    // OK + slots
+    if (ex.getData("state") === "OK") {
+      const slot = this.findSlotUnder(ex.x, ex.y);
 
-    if (hitSlot) {
-      hitSlot.used = true;
-
-      ex.setData("slotRef", hitSlot);
-      this.setExtState(ex, "OK");
-
-      ex.body.enable = false;
-      ex.x = hitSlot.x;
-      ex.y = hitSlot.y;
-
-      this.readyCount += 1;
-      this.readyText.setText(`Gatavs: ${this.readyCount}/${this.totalCount}`);
-
-      if (this.readyCount >= this.totalCount) {
-        this.finishGame();
+      if (slot && slot.used) {
+        ex.x += 22 * this.facing;
+        this.carrying = null;
+        return;
       }
 
-      this.carrying = null;
-      return;
-    }
+      if (slot && !slot.used) {
+        slot.used = true;
+        slot.sticker.setFillStyle(0x2aa84a, 0.95);
 
-    // citādi vienkārši nomet
-    ex.body.enable = true;
-    ex.body.setVelocity(0, 0);
+        ex.body.enable = false;
+        ex.x = slot.x;
+        ex.y = slot.y;
+        ex.setData("slotRef", slot);
+
+        this.readyCount += 1;
+        this.readyText.setText(`Gatavs: ${this.readyCount}/${this.totalCount}`);
+
+        if (this.readyCount >= this.totalCount) {
+          this.finishGame();
+        }
+
+        this.carrying = null;
+        return;
+      }
+    }
 
     this.carrying = null;
   }
 
-  // ----------------- UI / Buttons -----------------
-  makeTouchButtons(W, btnY) {
-    const mkBtn = (x, label, onDown, onUp) => {
-      const btn = this.add.container(x, btnY).setDepth(this.DEPTH.controls);
-      const bg = this.add.rectangle(0, 0, 110, 60, 0x223141).setStrokeStyle(2, 0x3a536b);
-      const tx = this.add.text(-12, -14, label, {
-        fontFamily: "Arial",
-        fontSize: "28px",
-        color: "#dbe7f3"
-      });
-
-      btn.add([bg, tx]);
-      btn.setSize(110, 60);
-      btn.setInteractive(new Phaser.Geom.Rectangle(-55, -30, 110, 60), Phaser.Geom.Rectangle.Contains);
-
-      btn.on("pointerdown", () => onDown && onDown());
-      btn.on("pointerup", () => onUp && onUp());
-      btn.on("pointerout", () => onUp && onUp());
-
-      return btn;
-    };
-
-    mkBtn(70, "←", () => (this.touch.left = true), () => (this.touch.left = false));
-    mkBtn(200, "→", () => (this.touch.right = true), () => (this.touch.right = false));
-    mkBtn(W - 200, "W", () => (this.touch.up = true), null);
-    mkBtn(W - 70, "S", () => (this.touch.down = true), null);
-  }
-
-  makeExitButton(W, uiY) {
-    const btn = this.add.container(W - 80, uiY + 150).setDepth(this.DEPTH.controls);
-    const bg = this.add.rectangle(0, 0, 140, 56, 0x5a1f1f).setStrokeStyle(2, 0xa34848);
-    const tx = this.add.text(-44, -14, "IZIET", {
-      fontFamily: "Arial",
-      fontSize: "22px",
-      color: "#ffffff"
-    });
-    btn.add([bg, tx]);
-
-    btn.setSize(140, 56);
-    btn.setInteractive(new Phaser.Geom.Rectangle(-70, -28, 140, 56), Phaser.Geom.Rectangle.Contains);
-
-    const pressIn = () => {
-      bg.setFillStyle(0x7a2a2a, 1);
-      btn.setScale(0.98);
-    };
-    const pressOut = () => {
-      bg.setFillStyle(0x5a1f1f, 1);
-      btn.setScale(1);
-    };
-
-    const doExit = () => {
-      try { window.close(); } catch (e) {}
-      try { this.game.destroy(true); } catch (e) {}
-      try { window.location.href = "about:blank"; } catch (e) {}
-    };
-
-    btn.on("pointerdown", () => pressIn());
-    btn.on("pointerup", () => {
-      pressOut();
-      doExit();
-    });
-    btn.on("pointerout", () => pressOut());
-  }
-
-  // ----------------- Helpers -----------------
-  addPlatform(x, y, w, h) {
-    const r = this.add.rectangle(x + w / 2, y, w, h, 0x263449).setDepth(this.DEPTH.platforms);
-    this.physics.add.existing(r, true);
-    r.body.setSize(w, h);
-    this.platforms.add(r);
-    return r;
-  }
-
-  setExtState(ex, state) {
-    if (state === "OK") ex.setTexture("tex_ext_ok");
-    else ex.setTexture("tex_ext_bad");
+  findSlotUnder(x, y) {
+    for (const s of this.slots) {
+      const d = Phaser.Math.Distance.Between(x, y, s.x, s.y);
+      if (d < 26) return s;
+    }
+    return null;
   }
 
   finishGame() {
-    // vienkāršs “uzvaras” pārklājums
+    if (this.finished) return;
+    this.finished = true;
+
+    const elapsedMs = this.time.now - this.startTimeMs;
+    const totalSec = Math.floor(elapsedMs / 1000);
+    const mm = Math.floor(totalSec / 60);
+    const ss = totalSec % 60;
+
     const W = this.scale.width;
+    const H = this.scale.height;
+
+    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
 
     this.add
-      .rectangle(W / 2, this.playH / 2, W, this.playH, 0x000000, 0.72)
-      .setDepth(this.DEPTH.overlay);
-
-    this.add
-      .text(W / 2, this.playH / 2 - 30, "Malacis! Viss salikts pareizi ✅", {
+      .text(W / 2, 260, "Līmenis pabeigts!", {
         fontFamily: "Arial",
-        fontSize: "26px",
+        fontSize: "34px",
         color: "#ffffff",
-        align: "center"
+        fontStyle: "bold"
       })
       .setOrigin(0.5)
-      .setDepth(this.DEPTH.overlay);
+      .setDepth(this.DEPTH.overlay + 1);
 
     this.add
-      .text(W / 2, this.playH / 2 + 20, "Vari doties atpakaļ uz izvēlni.", {
+      .text(W / 2, 320, `Jūsu laiks: ${mm} min ${ss} sek`, {
         fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#d7e6f7"
+        fontSize: "20px",
+        color: "#e7edf5"
       })
       .setOrigin(0.5)
-      .setDepth(this.DEPTH.overlay);
-
-    // pēc brīža uz izvēlni
-    this.time.delayedCall(1200, () => {
-      this.scene.start("MainMenu");
-    });
+      .setDepth(this.DEPTH.overlay + 1);
   }
 
-  uiStyleSmall() {
+  // ---------------- Drawing helpers ----------------
+  uiStyle() {
     return {
       fontFamily: "Arial",
       fontSize: "16px",
@@ -616,99 +705,335 @@ class Stage1 extends Phaser.Scene {
     };
   }
 
-  // --------- Tekstūras / vektori ---------
+  addPlatform(xLeft, surfaceY, width, thickness) {
+    const img = this.add
+      .image(xLeft + width / 2, surfaceY + thickness / 2, "tex_platform")
+      .setDisplaySize(width, thickness)
+      .setDepth(this.DEPTH.platforms);
+
+    this.physics.add.existing(img, true);
+    this.platforms.add(img);
+  }
+
+  // ✅ Spēlētājs: vecais “ķermenis/galva” + vektoru cepure (2 kluči) + šaurākas rokas + kājas
+  makePlayer(x, surfaceY) {
+    const c = this.add.container(Math.round(x), Math.round(surfaceY));
+
+    // ķermenis (stabilais)
+    const body = this.add.image(0, -31, "tex_playerBody").setDisplaySize(30, 44);
+    body.setPosition(Math.round(body.x), Math.round(body.y));
+
+    const stripe = this.add.rectangle(0, -16, 30, 8, 0x00ff66, 1);
+    stripe.setPosition(Math.round(stripe.x), Math.round(stripe.y));
+
+    // galva (stabilā)
+    const head = this.add.image(0, -57, "tex_head").setDisplaySize(22, 22);
+    head.setPosition(Math.round(head.x), Math.round(head.y));
+
+    // ===== Vektoru slānis (cepure/rokas/kājas) =====
+    const vec = this.add.container(0, 0);
+    c._vecLayer = vec;
+
+    // Krāsas
+    const hatColor = 0x2a2f33;      // tumša, bet ne “absolūti melna”
+    const skinColor = 0xd8b08b;
+    const legColor = 0x1a1a1a;
+
+    // ---- Cepure: 2 taisnstūri (kronis + nags) ----
+    // Pozicionēta tuvāk galvai (virs galvas “augšas”).
+    // Facing tiek panākts ar vec.scaleX = 1 / -1, tāpēc “nags” vienmēr skatās uz skriešanas virzienu.
+    const crown = this.add.rectangle(0, -69, 14, 8, hatColor, 1); // kronis uz galvas
+    const brim  = this.add.rectangle(10, -66, 18, 4, hatColor, 1); // “nags” uz priekšu (x>0)
+
+    // ---- Rokas: šaurāki trīsstūri ----
+    // Priekšējā roka (virzienā uz skriešanu)
+    const armFront = this.add.polygon(
+      14,
+      -34,
+      [
+        0, 0,
+        12, 4,
+        2, 14
+      ],
+      skinColor,
+      1
+    );
+
+    // Aizmugurējā roka
+    const armBack = this.add.polygon(
+      -14,
+      -34,
+      [
+        0, 0,
+        10, 3,
+        2, 12
+      ],
+      skinColor,
+      1
+    );
+
+    c._armL = armBack;
+    c._armR = armFront;
+    c._armBaseY = armFront.y;
+
+    // ---- Kājas (kluči) ----
+    const legBaseY = -6;
+const legL = this.add.rectangle(-9, legBaseY, 14, 16, legColor, 1);
+const legR = this.add.rectangle(9,  legBaseY, 14, 16, legColor, 1);
+
+    c._legL = legL;
+    c._legR = legR;
+    c._legBaseY = legBaseY;
+
+    // Slāņojums: kājas -> rokas -> cepure (lai cepure vienmēr virs galvas)
+    vec.add([legL, legR, armBack, armFront, crown, brim]);
+
+    c.add([body, stripe, head, vec]);
+    return c;
+  }
+
+  // ✅ Aparāts (stabilais)
+  makeExtinguisher(x, y, label) {
+    const c = this.add.container(Math.round(x), Math.round(y));
+
+    const shell = this.add.image(0, 0, "tex_extShell").setDisplaySize(24, 38);
+
+    const join = this.add.image(0, -19, "tex_extHandle").setDisplaySize(24, 4);
+    join.setPosition(Math.round(join.x), Math.round(join.y));
+
+    const handleBase = this.add.image(0, -22, "tex_extHandle").setDisplaySize(16, 10);
+    handleBase.setPosition(Math.round(handleBase.x), Math.round(handleBase.y));
+
+    const nozzle = this.add.image(10, -26, "tex_extNozzle").setDisplaySize(20, 7);
+    nozzle.setRotation(Phaser.Math.DegToRad(-20));
+    nozzle.setPosition(Math.round(nozzle.x), Math.round(nozzle.y));
+
+    const badge = this.add.rectangle(0, 7, 24, 16, 0x0b0f14, 0.9);
+
+    const txt = this.add
+      .text(0, 7, label, {
+        fontFamily: "Arial",
+        fontSize: "11px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
+
+    c.add([shell, join, handleBase, nozzle, badge, txt]);
+
+    this.physics.add.existing(c);
+    c.body.setSize(24, 38);
+    c.body.setOffset(-12, -19);
+
+    c.setData("txt", txt);
+    c.setData("badge", badge);
+
+    this.setExtState(c, "NOK");
+    return c;
+  }
+
+  setExtState(ext, state) {
+    ext.setData("state", state);
+    ext.getData("txt").setText(state);
+
+    const badge = ext.getData("badge");
+    const txt = ext.getData("txt");
+
+    txt.setColor("#ffffff");
+
+    if (state === "OK") {
+      badge.setFillStyle(0x0a8f3f);
+      badge.setAlpha(0.95);
+    } else {
+      badge.setAlpha(0);
+      badge.setFillStyle(0xff4040);
+    }
+  }
+
+  makeSpotsPortrait(W) {
+    const xLeft = 62;
+    const xLeftTop = 180;
+    const xRight = Math.round(W * 0.9);
+    const xTopExtra = Math.round(W * 0.8);
+
+    const narrowMid = this.NARROW_MID_X || Math.round(W * 0.47);
+
+    return [
+      { floor: 0, x: xLeftTop },
+      { floor: 0, x: xRight },
+      { floor: 0, x: xTopExtra },
+
+      { floor: 1, x: xLeft },
+      { floor: 1, x: xRight },
+
+      { floor: 2, x: xLeft },
+      { floor: 2, x: narrowMid },
+
+      { floor: 3, x: xLeft },
+      { floor: 3, x: xRight },
+
+      { floor: 4, x: xRight }
+    ];
+  }
+
+  // ---------------- Gradient textures (fake 3D) ----------------
   buildGradientTextures() {
-    // BUSS (plakans, stabils)
-    if (!this.textures.exists("tex_bus")) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
-      const w = 256;
-      const h = 128;
+    const ensure = (key, w, h, painter) => {
+      if (this.textures.exists(key)) return;
+      const tx = this.textures.createCanvas(key, w, h);
+      const ctx = tx.getContext();
+      painter(ctx, w, h);
+      tx.refresh();
+    };
 
-      g.clear();
-      g.fillStyle(0x2f5a7a, 1);
-      g.fillRoundedRect(0, 0, w, h, 10);
+    ensure("tex_platform", 64, 16, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#1a8fb3");
+      g.addColorStop(0.45, "#0f5f7a");
+      g.addColorStop(0.7, "#0c465a");
+      g.addColorStop(1.0, "#083343");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
 
-      g.fillStyle(0x23445e, 1);
-      g.fillRoundedRect(12, 16, w - 24, 50, 10);
+    ensure("tex_elevator", 64, 16, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#8b949e");
+      g.addColorStop(0.5, "#5b636b");
+      g.addColorStop(1.0, "#2d333b");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
 
-      g.fillStyle(0x1c3447, 1);
-      g.fillRoundedRect(12, 74, w - 24, 40, 10);
+    // Buss (stabilais “plastmasa/metāls”)
+    ensure("tex_bus", 128, 64, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0.0, "#ffffff");
+      g.addColorStop(0.35, "#eef3f8");
+      g.addColorStop(0.7, "#d6dee8");
+      g.addColorStop(1.0, "#b8c3d1");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
 
-      g.generateTexture("tex_bus", w, h);
-      g.destroy();
-    }
+      const g2 = ctx.createLinearGradient(0, 0, w, 0);
+      g2.addColorStop(0.0, "rgba(255,255,255,0)");
+      g2.addColorStop(0.5, "rgba(255,255,255,0.35)");
+      g2.addColorStop(1.0, "rgba(255,255,255,0)");
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, Math.round(h * 0.22), w, Math.round(h * 0.22));
+    });
 
-    // slot
-    if (!this.textures.exists("tex_slot")) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
-      const w = 28;
-      const h = 40;
+    ensure("tex_playerBody", 32, 48, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#050607");
+      g.addColorStop(0.55, "#23272b");
+      g.addColorStop(1.0, "#050607");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
 
-      g.clear();
-      g.fillStyle(0x184059, 1);
-      g.fillRoundedRect(0, 0, w, h, 6);
+    ensure("tex_head", 32, 32, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, 16);
+      rg.addColorStop(0.0, "#fff4dd");
+      rg.addColorStop(0.45, "#ffe2b8");
+      rg.addColorStop(1.0, "#caa27c");
 
-      g.lineStyle(2, 0x74c0ff, 1);
-      g.strokeRoundedRect(2, 2, w - 4, h - 4, 6);
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
 
-      g.generateTexture("tex_slot", w, h);
-      g.destroy();
-    }
+    ensure("tex_extShell", 32, 48, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#8e0a0a");
+      g.addColorStop(0.35, "#ff2b2b");
+      g.addColorStop(0.55, "#ff5a5a");
+      g.addColorStop(1.0, "#8e0a0a");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
 
-    // extinguisher OK
-    if (!this.textures.exists("tex_ext_ok")) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
-      const w = 20;
-      const h = 36;
+    ensure("tex_extHandle", 64, 32, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
 
-      g.clear();
-      g.fillStyle(0xe85b5b, 1);
-      g.fillRoundedRect(0, 6, w, h - 6, 6);
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#2a3138");
+      g.addColorStop(0.25, "#9aa6b2");
+      g.addColorStop(0.5, "#eef2f6");
+      g.addColorStop(0.75, "#7e8a95");
+      g.addColorStop(1.0, "#1c232a");
 
-      g.fillStyle(0xffe0e0, 1);
-      g.fillRect(4, 16, w - 8, 6);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 6, w, h - 12);
 
-      g.fillStyle(0x2a2a2a, 1);
-      g.fillRect(4, 0, w - 8, 6);
+      const hl = ctx.createLinearGradient(0, 0, 0, h);
+      hl.addColorStop(0.0, "rgba(255,255,255,0.30)");
+      hl.addColorStop(0.6, "rgba(255,255,255,0)");
+      ctx.fillStyle = hl;
+      ctx.fillRect(0, 6, w, Math.max(2, Math.round((h - 12) * 0.45)));
 
-      g.generateTexture("tex_ext_ok", w, h);
-      g.destroy();
-    }
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      ctx.fillRect(0, 6 + Math.round((h - 12) * 0.65), w, Math.round((h - 12) * 0.35));
+    });
 
-    // extinguisher BAD
-    if (!this.textures.exists("tex_ext_bad")) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
-      const w = 20;
-      const h = 36;
+    ensure("tex_extNozzle", 64, 32, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
 
-      g.clear();
-      g.fillStyle(0xb63f3f, 1);
-      g.fillRoundedRect(0, 6, w, h - 6, 6);
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0.0, "#12171d");
+      g.addColorStop(0.28, "#a9b6c2");
+      g.addColorStop(0.55, "#eef2f6");
+      g.addColorStop(0.78, "#8d99a4");
+      g.addColorStop(1.0, "#0f141a");
 
-      g.fillStyle(0xffd2d2, 1);
-      g.fillRect(4, 16, w - 8, 6);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 10, w, h - 20);
 
-      g.fillStyle(0x2a2a2a, 1);
-      g.fillRect(4, 0, w - 8, 6);
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.fillRect(w - 10, 10, 10, h - 20);
 
-      g.generateTexture("tex_ext_bad", w, h);
-      g.destroy();
-    }
-  }
+      const hl = ctx.createLinearGradient(0, 0, w, h);
+      hl.addColorStop(0.0, "rgba(255,255,255,0.18)");
+      hl.addColorStop(0.5, "rgba(255,255,255,0)");
+      ctx.fillStyle = hl;
+      ctx.fillRect(0, 10, w, h - 20);
+    });
 
-  buildPlayerVisual() {
-    // (tava oriģinālā player zīmēšana paliek kā bija ZIP'ā)
-    // Šī funkcija ir garāka tavā failā; šeit tā ir tieši no tava ZIP.
-    // Lai nepārrakstītu tavu grafiku, es to neatkomentēju/nesaīsināju.
-    // (Paliek tieši tā, kā bija.)
-    // --- START (no ZIP) ---
-    // (ŠEIT IR TAVS ORIĢINĀLAIS KODS - NEIZMAINĪTS)
-    // --- END ---
-  }
+    ensure("tex_wheel", 64, 64, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 8, cy - 8, 6, cx, cy, 30);
+      rg.addColorStop(0.0, "#4a4a4a");
+      rg.addColorStop(0.6, "#1a1a1a");
+      rg.addColorStop(1.0, "#050505");
 
-  applyLegAnim(moving) {
-    // (paliek kā tavā oriģinālā)
-    // --- START (no ZIP) ---
-    // --- END ---
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    ensure("tex_wheelHub", 64, 64, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2,
+        cy = h / 2;
+      const rg = ctx.createRadialGradient(cx - 6, cy - 6, 4, cx, cy, 18);
+      rg.addColorStop(0.0, "#f2f2f2");
+      rg.addColorStop(0.6, "#9a9a9a");
+      rg.addColorStop(1.0, "#3a3a3a");
+
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    });
   }
 }
