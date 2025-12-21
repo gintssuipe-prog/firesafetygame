@@ -1,3 +1,4 @@
+// izvilkts no kapa, resnas kājas, kantaina gaiša cepure
 // Stage1.js — stabila versija (ROLLBACK) + cilvēciņam vektoru cepure/rokas/kājas + kāju “tipināšana”  kantaina cepure aizgaaja
 // ✅ Saglabāts: stabilais “plikpauris” + plakanais buss (tex_bus kā vakardien)
 // ✅ Cepure: 2 taisnstūri (kronis + nags), vektors, tumša (ne pilnīgi melna), tuvāk galvai
