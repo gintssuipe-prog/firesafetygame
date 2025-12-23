@@ -20,7 +20,9 @@ class Stage1 extends Phaser.Scene {
 
     this.facing = 1; // 1=pa labi, -1=pa kreisi
     this.startTimeMs = 0;
-    this.finished = false;
+    
+    this._timerStarted = false;
+this.finished = false;
     this.prevElevY = 0;
 
     // buss
@@ -90,7 +92,9 @@ class Stage1 extends Phaser.Scene {
     // start timer immediately on scene entry
     this.startTimeMs = this.time.now;
 
-    // ---- Layout: augšā spēles laukums, apakšā pogas ----
+    
+    this._timerStarted = true;
+// ---- Layout: augšā spēles laukums, apakšā pogas ----
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
@@ -308,6 +312,11 @@ class Stage1 extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.finished) {
+      // Mobile safety: if Scene instance was kept alive, ensure timer starts when Stage1 actually begins
+      if (!this._timerStarted) {
+        this.startTimeMs = time;
+        this._timerStarted = true;
+      }
       const totalSec = Math.floor((time - this.startTimeMs) / 1000);
       const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
       const ss = String(totalSec % 60).padStart(2, "0");

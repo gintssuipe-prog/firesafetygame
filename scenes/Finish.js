@@ -42,6 +42,7 @@ class Finish extends Phaser.Scene {
     else if (typeof data?.elapsedMs === 'number') timeSec = Math.floor(data.elapsedMs / 1000);
 
     this.result = { reason, timeSec };
+    this._saved = false; // reset each run so 2nd play can save
 
     this._top = [];
     this._scrollY = 0;
@@ -221,6 +222,9 @@ class Finish extends Phaser.Scene {
   }
 
   async loadTop() {
+    // UX: show loading status even if mission not completed (EXIT/timeout)
+    this._status.setText('Ielādē rezultātu tabulu...');
+    this._status.setColor('#ffffff');
     try {
       const top = await this.jsonp(`${this.API_URL}?action=top`);
       if (!Array.isArray(top)) throw new Error('bad response');
