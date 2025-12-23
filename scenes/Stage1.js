@@ -30,6 +30,9 @@ class Stage1 extends Phaser.Scene {
     // anim
     this.runT = 0; // “tipināšanas” fāze
 
+    this._ending = false;
+    this.MAX_TIME_MS = 15 * 60 * 1000; // 15 min
+
     // audio keys
     this.SFX = {
       pickup: "sfx_pickup",
@@ -56,7 +59,31 @@ class Stage1 extends Phaser.Scene {
     }
   }
 
+
+  init() {
+    // Phaser var restartēt to pašu Scene instanci (constructor netiek izsaukts vēlreiz),
+    // tāpēc šeit atiestatām visu runtime stāvokli, lai 2./3. spēlē viss strādā korekti.
+    this.carrying = null;
+    this.readyCount = 0;
+
+    this.touch = { left: false, right: false, up: false, down: false };
+
+    this.facing = 1;
+    this.startTimeMs = 0;
+    this.finished = false;
+    this.prevElevY = 0;
+
+    this.busStorage = [];
+    this.runT = 0;
+
+    this._ending = false; // svarīgi: lai EXIT/timeout/finish strādā atkārtoti
+  }
+
   create() {
+    try {
+      if (this.input && this.input.keyboard) this.input.keyboard.enabled = true;
+    } catch (e) {}
+
     const W = this.scale.width;
     const H = this.scale.height;
 
@@ -282,6 +309,12 @@ class Stage1 extends Phaser.Scene {
       const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
       const ss = String(totalSec % 60).padStart(2, "0");
       this.timeText.setText(`Laiks: ${mm}:${ss}`);
+    }
+
+    // Auto-beigas pēc 15 min (kā EXIT)
+    if (!this.finished && !this._ending && time - this.startTimeMs >= this.MAX_TIME_MS) {
+      this.gotoFinish("timeout");
+      return;
     }
 
     // lifts
@@ -524,18 +557,7 @@ class Stage1 extends Phaser.Scene {
     };
 
     const doExit = () => {
-      try {
-        window.open("", "_self");
-        window.close();
-      } catch (e) {}
-
-      try {
-        this.game.destroy(true);
-      } catch (e) {}
-
-      try {
-        window.location.href = "about:blank";
-      } catch (e) {}
+      this.gotoFinish("exit");
     };
 
     btn.on("pointerdown", () => pressIn());
@@ -686,40 +708,33 @@ class Stage1 extends Phaser.Scene {
   }
 
   finishGame() {
-    if (this.finished) return;
-    this.finished = true;
+  if (this.finished || this._ending) return;
+  this.finished = true;
 
-    const elapsedMs = this.time.now - this.startTimeMs;
-    const totalSec = Math.floor(elapsedMs / 1000);
-    const mm = Math.floor(totalSec / 60);
-    const ss = totalSec % 60;
+  const elapsedMs = this.time.now - this.startTimeMs;
+  this.gotoFinish("success", { elapsedMs });
+}
 
-    const W = this.scale.width;
-    const H = this.scale.height;
+gotoFinish(reason, data = {}) {
+  if (this._ending) return;
+  this._ending = true;
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(this.DEPTH.overlay);
+  const elapsedMs = typeof data.elapsedMs === "number" ? data.elapsedMs : this.time.now - this.startTimeMs;
 
-    this.add
-      .text(W / 2, 260, "Līmenis pabeigts!", {
-        fontFamily: "Arial",
-        fontSize: "34px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      })
-      .setOrigin(0.5)
-      .setDepth(this.DEPTH.overlay + 1);
+  // Droši atslēdzam kontroli
+  try {
+    if (this.input && this.input.keyboard) this.input.keyboard.enabled = false;
+  } catch (e) {}
 
-    this.add
-      .text(W / 2, 320, `Jūsu laiks: ${mm} min ${ss} sek`, {
-        fontFamily: "Arial",
-        fontSize: "20px",
-        color: "#e7edf5"
-      })
-      .setOrigin(0.5)
-      .setDepth(this.DEPTH.overlay + 1);
-  }
+  this.scene.start("Finish", {
+    reason,
+    elapsedMs,
+    readyCount: this.readyCount,
+    totalCount: this.totalCount
+  });
+}
 
-  // ---------------- Drawing helpers ----------------
+// ---------------- Drawing helpers ----------------
   uiStyle() {
     return {
       fontFamily: "Arial",

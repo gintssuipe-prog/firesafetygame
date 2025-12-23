@@ -15,6 +15,15 @@ class MainMenu extends Phaser.Scene {
     this._ctrlKeyTexts = [];
     this._ctrlLabelTexts = [];
   }
+  init() {
+    // Reset state when returning from Finish/Stage scenes
+    this._starting = false;
+    if (this.input && this.input.keyboard) {
+      this.input.keyboard.enabled = true;
+    }
+  }
+
+
 
   preload() {
     if (!this.textures.exists("intro_bg")) {
