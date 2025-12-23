@@ -87,6 +87,9 @@ class Stage1 extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    // start timer immediately on scene entry
+    this.startTimeMs = this.time.now;
+
     // ---- Layout: augšā spēles laukums, apakšā pogas ----
     this.controlsH = 190;
     this.playH = H - this.controlsH;
@@ -300,7 +303,7 @@ class Stage1 extends Phaser.Scene {
     // ---- Keyboard ----
     this.cursors = this.input.keyboard.createCursorKeys();
 
-    this.startTimeMs = this.time.now;
+    // startTimeMs already set at top of create
   }
 
   update(time, delta) {
