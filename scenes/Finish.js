@@ -46,6 +46,9 @@ class Finish extends Phaser.Scene {
     this._top = [];
     this._scrollY = 0;
     this._scrollMax = 0;
+    // reset save state on every entry (RESTART -> play again)
+    this._saved = false;
+    this.disableNameInput();
 
     this._qualifies = false;
     this._insertRank = null;
@@ -221,6 +224,10 @@ class Finish extends Phaser.Scene {
   }
 
   async loadTop() {
+    // Loading indicator (so user sees progress)
+    this._status.setText('Ielādē rezultātu tabulu...');
+    try { this._status.setFontStyle && this._status.setFontStyle('bold'); } catch (e) {}
+    this._status.setColor('#ffffff');
     try {
       const top = await this.jsonp(`${this.API_URL}?action=top`);
       if (!Array.isArray(top)) throw new Error('bad response');
