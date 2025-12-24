@@ -410,7 +410,7 @@ class Finish extends Phaser.Scene {
     // Focus tracking (mobilajā izmantojam, lai ignorētu soft-keyboard resize)
     input.addEventListener('focus', () => { this._inputFocused = true; });
     input.addEventListener('blur', () => { this._inputFocused = false; });
-on enabled state sensible
+// on enabled state sensible
     input.addEventListener('input', this._onNameInput = () => {
       if (this._saved) return;
       const ok = input.value.trim().length > 0;
