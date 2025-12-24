@@ -263,7 +263,7 @@ class MainMenu extends Phaser.Scene {
           color: "#ff6666",
         align: "center"
       })
-      .setOrigin(0.5, 0);.setAlpha(0.85)
+      .setOrigin(0.5, 0).setAlpha(0.85)
 
     this._contentItems = [title, subtitle, p1, p2, controlsTitle, ...ctrlKeyTexts, ...ctrlLabelTexts, warning];
     this._ctrlKeyTexts = ctrlKeyTexts;
