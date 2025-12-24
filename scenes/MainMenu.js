@@ -51,11 +51,11 @@ class MainMenu extends Phaser.Scene {
     const btnH = 58;
 
     const btnBg = this.add
-      .rectangle(0, 0, btnW, btnH, 0x1f3a52, 1)
+      .rectangle(0, 0, btnW, btnH, 0x1f5a3a, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
-      .text(0, 0, "UZ PRIEKŠU", {
+      .text(0, 0, "SPĒLĒT SPĒLI", {
         fontFamily: "Arial",
         fontSize: "22px",
         color: "#ffffff",
@@ -67,7 +67,7 @@ class MainMenu extends Phaser.Scene {
     const btn2W = btnW;
     const btn2H = btnH;
     const btnTopBg = this.add
-      .rectangle(0, 0, btn2W, btn2H, 0x1f3a52, 1)
+      .rectangle(0, 0, btn2W, btn2H, 0x1f5a3a, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnTopText = this.add
@@ -130,7 +130,7 @@ class MainMenu extends Phaser.Scene {
     };
 
     const pressOut2 = () => {
-      btnTopBg.setFillStyle(0x1f3a52, 1);
+      btnTopBg.setFillStyle(0x1f5a3a, 1);
       this.tweens.killTweensOf([btnTopBg, btnTopText]);
       this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -149,13 +149,13 @@ class MainMenu extends Phaser.Scene {
     this._btnText = btnText;
 
     const pressIn = () => {
-      btnBg.setFillStyle(0x2a587c, 1);
+      btnBg.setFillStyle(0x2a7c58, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
 
     const pressOut = () => {
-      btnBg.setFillStyle(0x1f3a52, 1);
+      btnBg.setFillStyle(0x1f5a3a, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -259,11 +259,11 @@ class MainMenu extends Phaser.Scene {
     const warning = this.add
       .text(0, 0, "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!", {
         fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ff3b3b",
+          fontSize: "14px",
+          color: "#ff6666",
         align: "center"
       })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0);.setAlpha(0.85)
 
     this._contentItems = [title, subtitle, p1, p2, controlsTitle, ...ctrlKeyTexts, ...ctrlLabelTexts, warning];
     this._ctrlKeyTexts = ctrlKeyTexts;
