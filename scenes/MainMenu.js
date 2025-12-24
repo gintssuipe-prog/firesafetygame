@@ -10,6 +10,8 @@ class MainMenu extends Phaser.Scene {
     this._btnText = null;
     this._btnTopBg = null;
     this._btnTopText = null;
+    this._btnExitBg = null;
+    this._btnExitText = null;
     this._bg = null;
     this._gg = null;
 
@@ -79,6 +81,47 @@ class MainMenu extends Phaser.Scene {
 
     this._btnTopBg = btnTopBg;
     this._btnTopText = btnTopText;
+
+    // ----- IZIET NO SPĒLES poga -----
+    const btnExitBg = this.add
+      .rectangle(0, 0, btn2W, btn2H, 0x7a2020, 1)
+      .setInteractive({ useHandCursor: true });
+
+    const btnExitText = this.add
+      .text(0, 0, "IZIET NO SPĒLES", {
+        fontFamily: "Arial",
+        fontSize: "20px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
+
+    this._btnExitBg = btnExitBg;
+    this._btnExitText = btnExitText;
+
+    const pressInExit = () => {
+      btnExitBg.setFillStyle(0x8b2a2a, 1);
+      this.tweens.killTweensOf([btnExitBg, btnExitText]);
+      this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
+    };
+
+    const pressOutExit = () => {
+      btnExitBg.setFillStyle(0x7a2020, 1);
+      this.tweens.killTweensOf([btnExitBg, btnExitText]);
+      this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
+    };
+
+    const safeExit = () => {
+      // Web drošības dēļ window.close() bieži nestrādā, ja cilni neatvēra ar window.open.
+      try { window.close(); } catch (e) {}
+      // Fallback: atgriežam uz Intro (lietotājs var aizvērt cilni)
+      this.scene.start("Intro");
+    };
+
+    btnExitBg.on("pointerdown", () => pressInExit());
+    btnExitBg.on("pointerup", () => { pressOutExit(); safeExit(); });
+    btnExitBg.on("pointerout", () => pressOutExit());
+    btnExitBg.on("pointercancel", () => pressOutExit());
 
     const pressIn2 = () => {
       btnTopBg.setFillStyle(0x24455f, 1);
@@ -251,9 +294,14 @@ class MainMenu extends Phaser.Scene {
       btnTopBg.setPosition(W / 2, btn2Y);
       btnTopText.setPosition(W / 2, btn2Y);
 
+      // IZIET NO SPĒLES poga zem TOP 50
+      const btn3Y = btn2Y + 74;
+      btnExitBg.setPosition(W / 2, btn3Y);
+      btnExitText.setPosition(W / 2, btn3Y);
+
       const btnTopEdge = btnY - btnH / 2;
       const contentTop = isDesktop ? 78 : 56;
-      const contentBottomLimit = btnTop - (isDesktop ? 26 : 18);
+      const contentBottomLimit = btnTopEdge - (isDesktop ? 26 : 18);
 
       const GAP_S = isDesktop ? 16 : 12;
       const GAP_M = isDesktop ? 26 : 18;
@@ -334,6 +382,22 @@ class MainMenu extends Phaser.Scene {
         this.tweens.killTweensOf([this._btnBg, this._btnText]);
         this._btnBg.removeAllListeners();
         this._btnBg.disableInteractive();
+      }
+    } catch (e) {}
+
+    try {
+      if (this._btnTopBg && this._btnTopText) {
+        this.tweens.killTweensOf([this._btnTopBg, this._btnTopText]);
+        this._btnTopBg.removeAllListeners();
+        this._btnTopBg.disableInteractive();
+      }
+    } catch (e) {}
+
+    try {
+      if (this._btnExitBg && this._btnExitText) {
+        this.tweens.killTweensOf([this._btnExitBg, this._btnExitText]);
+        this._btnExitBg.removeAllListeners();
+        this._btnExitBg.disableInteractive();
       }
     } catch (e) {}
   }
