@@ -12,7 +12,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
 
-  scene: [Intro, MainMenu, Stage1, Finish],
+  scene: [Intro, MainMenu, Stage1, Finish, Score],
 
   physics: {
     default: "arcade",
