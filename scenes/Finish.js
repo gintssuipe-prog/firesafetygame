@@ -88,10 +88,13 @@ class Finish extends Phaser.Scene {
     const panelW = Math.min(420, W - 44);
     const panelH = Math.min(300, H - 240);
     const panelTop = 142;
-    const panel = this.add.rectangle(W / 2, panelTop + panelH / 2, panelW, panelH, 0x000000, 0.25);
-    panel.setStrokeStyle(2, 0xffffff, 0.10);
 
-    if (success) {
+    // Shared button size/style (match Score/MainMenu sizing)
+    const btnW = Math.min(260, W - 80);
+    const btnH = 58;
+
+    const panel = this.add.rectangle(W / 2, panelTop + panelH / 2, panelW, panelH, 0x000000, 0.25);
+if (success) {
       this._msgText = this.add
         .text(W / 2, panelTop + 26, "Ieraksti vārdu un saglabā rezultātu", {
           fontFamily: "Arial",
@@ -107,15 +110,15 @@ class Finish extends Phaser.Scene {
       this.createNameInput(W / 2, inputY, Math.min(280, panelW - 60), 44);
 
       const saveY = panelTop + 160;
-      this._saveBtn = this.makeButton(W / 2, saveY, 200, 58, "SAGLABĀT", 0x1b3f57, 0x224c69);
+      this._saveBtn = this.makeButton(W / 2, saveY, btnW, btnH, "SAGLABĀT", 0x5a5a5a, 0x6a6a6a);
       this._saveBtn.on("pointerup", () => this.submitScore(timeSec));
     } else {
       this._msgText = this.add
-        .text(W / 2, panelTop + panelH / 2, "Rezultātu var saglabāt tikai pēc veiksmīgas misijas.", {
+        .text(W / 2, panelTop + 26, "Rezultātu var saglabāt tikai pēc veiksmīgas misijas.", {
           fontFamily: "Arial",
           fontSize: "16px",
           color: "#ffffff",
-          alpha: 0.85,
+          alpha: 0.95,
           align: "center",
           wordWrap: { width: panelW - 28 }
         })
@@ -123,8 +126,8 @@ class Finish extends Phaser.Scene {
     }
 
     // Bottom button: UZ MENU
-    const btnY = H - 92;
-    const btnMenu = this.makeButton(W / 2, btnY, 200, 58, "UZ MENU", 0x184a30, 0x1f5c3a);
+    const btnY = H - 72;
+    const btnMenu = this.makeButton(W / 2, btnY, btnW, btnH, "UZ MENU", 0x5a5a5a, 0x6a6a6a);
     btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
   }
 

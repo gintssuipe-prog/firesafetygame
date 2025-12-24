@@ -3,160 +3,187 @@ class Score extends Phaser.Scene {
     super("Score");
     this.API_URL = "https://script.google.com/macros/s/AKfycbyh6BcVY_CBPW9v7SNo1bNp_XttvhxpeSdYPfrTdRCD4KWXLeLvv-0S3p96PX0Dv5BnrA/exec";
     this.TOKEN = "FIRE2025";
-    this._top = [];
-    this._scrollY = 0;
-    this._contentH = 0;
 
-    this._onWheel = null;
-    this._dragging = false;
-    this._dragStartY = 0;
-    this._scrollStartY = 0;
+    this._top = [];
+    this._statusText = null;
+    this._hintText = null;
+
+    this._domWrap = null;     // Phaser DOMElement wrapper
+    this._domEl = null;       // actual div element
+
+    this._onResize = null;
     this._jsonpTimeout = null;
     this._jsonpCleanup = null;
   }
 
-  init() {
-    // Reset every time we enter Score
-    this._top = [];
-    this._scrollY = 0;
-    this._contentH = 0;
-    this._dragging = false;
-    this._dragStartY = 0;
-    this._scrollStartY = 0;
+  init(data) {
+    // nothing
+  }
+
+  preload() {
+    this.load.image("intro_bg", "assets/bg.jpg");
   }
 
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    this.events.once("shutdown", this.cleanup, this);
+    this.events.once("destroy", this.cleanup, this);
+
     this.cameras.main.setBackgroundColor("#101a24");
 
-    // Background image (same as MainMenu)
-    const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5);
-    bg.setAlpha(0.12);
+    // Background like MainMenu/Finish
+    const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5).setAlpha(0.12);
+    const g = this.add.graphics();
 
-    const gg = this.add.graphics();
-
-    // Title (match Finish typography/spacing)
-    const title = this.add.text(W / 2, 64, "TOP 50", {
-      fontFamily: "Arial",
-      fontSize: "34px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-
-    // Status (loading / error) — same style as Finish subtitle
-    const status = this.add.text(W / 2, 108, "Ielādē rezultātu tabulu…", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#ffffff",
-      alpha: 0.95
-    }).setOrigin(0.5);
-    this._statusText = status;
-
-    // Hint (shown after successful load)
-    const hint = this.add.text(W / 2, 108, "Skrollē tabulu", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#ffffff",
-      alpha: 0.95
-    }).setOrigin(0.5);
-    hint.setVisible(false);
-    this._hintText = hint;
-
-    // Table area geometry
-    const tableX = 28;
-    const tableY = 150;
-    const tableW = W - 56;
-    const tableH = H - 150 - 120; // leave room for button
-    const headerH = 36;
-    const rowH = 28;
-
-    // Semi-transparent container (no white background)
-    const panel = this.add.rectangle(W / 2, tableY + tableH / 2, tableW, tableH, 0x000000, 0.25);
-    panel.setStrokeStyle(2, 0xffffff, 0.12);
-
-    // Header
-    const headerBg = this.add.rectangle(W / 2, tableY + headerH / 2, tableW, headerH, 0x000000, 0.45);
-    headerBg.setStrokeStyle(1, 0xffffff, 0.10);
-
-    const colRankX = tableX + 18;
-    const colNameX = tableX + 70;
-    const colTimeX = tableX + tableW - 18;
-
-    const hdrStyle = { fontFamily: "Arial", fontSize: "16px", color: "#ffffff", fontStyle: "bold" };
-    this.add.text(colRankX, tableY + 9, "Vieta", hdrStyle).setOrigin(0, 0);
-    this.add.text(colNameX, tableY + 9, "Vārds", hdrStyle).setOrigin(0, 0);
-    this.add.text(colTimeX, tableY + 9, "Laiks", hdrStyle).setOrigin(1, 0);
-
-    // Content container (scrollable)
-    const content = this.add.container(0, 0);
-    this._content = content;
-
-    // Mask to clip rows
-    const maskG = this.make.graphics({ x: 0, y: 0, add: false });
-    maskG.fillStyle(0xffffff);
-    maskG.fillRect(tableX, tableY + headerH, tableW, tableH - headerH);
-    const mask = maskG.createGeometryMask();
-    content.setMask(mask);
-
-    // Button (same width as MainMenu)
-    const btnW = 200;
-    const btnH = 58;
-    const btnY = H - 70;
-
-    const btnMenu = this._makeButton(W / 2, btnY, btnW, btnH, "UZ MENU", 0x184a30, 0x1f5c3a);
-    btnMenu.on("pointerup", () => {
-      this._cleanupJsonp();
-      this.scene.start("MainMenu");
-    });
-
-    // Layout updater (for orientation/resize, safe because no DOM input here)
-    const applyLayout = (w, h) => {
+    const applyBg = (w, h) => {
       bg.setPosition(w / 2, h / 2);
-      const scaleBg = Math.max(w / bg.width, h / bg.height);
-      bg.setScale(scaleBg);
+      const s = Math.max(w / bg.width, h / bg.height);
+      bg.setScale(s);
 
-      gg.clear();
-      gg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
-      gg.fillRect(0, Math.floor(h * 0.28), w, Math.ceil(h * 0.72));
+      g.clear();
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
+      g.fillRect(0, Math.floor(h * 0.28), w, Math.ceil(h * 0.72));
     };
+    applyBg(W, H);
 
-    applyLayout(W, H);
-    this._onResize = (gameSize) => applyLayout(gameSize.width, gameSize.height);
+    // Title
+    this.add
+      .text(W / 2, 64, "TOP 50", {
+        fontFamily: "Arial",
+        fontSize: "34px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
+
+    // Status + hint (match Finish style)
+    this._statusText = this.add
+      .text(W / 2, 108, "Ielādē rezultātu tabulu…", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#ffffff",
+        alpha: 0.95
+      })
+      .setOrigin(0.5);
+
+    this._hintText = this.add
+      .text(W / 2, 108, "Skrollē tabulu", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#ffffff",
+        alpha: 0.95
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    // DOM table container (simple + robust on mobile)
+    this._createDomTable();
+
+    // Bottom button: UZ MENU (grey, no frame)
+    const btnW = Math.min(260, W - 80);
+    const btnH = 58;
+    const btnY = H - 72;
+    const btnMenu = this._makeButton(W / 2, btnY, btnW, btnH, "UZ MENU", 0x5a5a5a, 0x6a6a6a);
+    btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
+
+    // Resize handler: keep everything adaptive
+    this._onResize = (gameSize) => {
+      applyBg(gameSize.width, gameSize.height);
+
+      // Keep DOM table sized/positioned
+      this._syncDomTable(gameSize.width, gameSize.height);
+
+      // Move hint/status and menu button
+      if (this._statusText) this._statusText.setPosition(gameSize.width / 2, 108);
+      if (this._hintText) this._hintText.setPosition(gameSize.width / 2, 108);
+
+      btnMenu.setPosition(gameSize.width / 2, gameSize.height - 72);
+    };
     this.scale.on("resize", this._onResize);
 
-    // Scrolling: wheel + drag
-    this._onWheel = (pointer, gameObjects, dx, dy) => {
-      this._setScroll(this._scrollY + dy);
-    };
-    this.input.on("wheel", this._onWheel);
-
-    panel.setInteractive(new Phaser.Geom.Rectangle(panel.x - tableW / 2, panel.y - tableH / 2, tableW, tableH), Phaser.Geom.Rectangle.Contains);
-    panel.on("pointerdown", (p) => {
-      this._dragging = true;
-      this._dragStartY = p.y;
-      this._scrollStartY = this._scrollY;
-    });
-    this.input.on("pointerup", () => (this._dragging = false));
-    this.input.on("pointermove", (p) => {
-      if (!this._dragging) return;
-      const delta = this._dragStartY - p.y;
-      this._setScroll(this._scrollStartY + delta);
-    });
-
-    // Cleanup on shutdown/destroy
-    this.events.once("shutdown", this._cleanup, this);
-    this.events.once("destroy", this._cleanup, this);
-
-    // Load data
     this._loadTop();
   }
 
-  _cleanup() {
+  cleanup() {
     this._cleanupJsonp();
-    if (this.scale && this._onResize) this.scale.off("resize", this._onResize);
-    if (this.input && this._onWheel) this.input.off("wheel", this._onWheel);
+
+    if (this._onResize) {
+      try { this.scale.off("resize", this._onResize); } catch (e) {}
+      this._onResize = null;
+    }
+
+    try {
+      if (this._domWrap) this._domWrap.destroy();
+    } catch (e) {}
+    this._domWrap = null;
+    this._domEl = null;
+  }
+
+  _createDomTable() {
+    // Wrapper div (scrollable)
+    const el = document.createElement("div");
+    el.style.overflowY = "auto";
+    el.style.overflowX = "hidden";
+    el.style.webkitOverflowScrolling = "touch";
+    el.style.background = "rgba(0,0,0,0.18)";
+    el.style.borderRadius = "10px";
+    el.style.padding = "10px 10px";
+    el.style.color = "#fff";
+    el.style.fontFamily = "Arial, sans-serif";
+    el.style.fontSize = "16px";
+    el.style.lineHeight = "1.35";
+    el.style.boxSizing = "border-box";
+
+    // Inner content
+    const inner = document.createElement("div");
+    inner.style.display = "flex";
+    inner.style.flexDirection = "column";
+    inner.style.gap = "6px";
+
+    // header row
+    const header = document.createElement("div");
+    header.style.display = "grid";
+    header.style.gridTemplateColumns = "54px 1fr 74px";
+    header.style.columnGap = "10px";
+    header.style.opacity = "0.95";
+    header.style.fontWeight = "bold";
+    header.innerHTML = `<div>Vieta</div><div>Vārds</div><div style="text-align:right;">Laiks</div>`;
+
+    inner.appendChild(header);
+
+    const rows = document.createElement("div");
+    rows.id = "rows";
+    rows.style.display = "flex";
+    rows.style.flexDirection = "column";
+    rows.style.gap = "6px";
+    inner.appendChild(rows);
+
+    el.appendChild(inner);
+
+    // Place as Phaser DOM element
+    this._domEl = el;
+    this._domWrap = this.add.dom(0, 0, el);
+    this._domWrap.setOrigin(0.5);
+
+    // Initial size/position
+    this._syncDomTable(this.scale.width, this.scale.height);
+  }
+
+  _syncDomTable(W, H) {
+    if (!this._domEl || !this._domWrap) return;
+
+    const marginX = 22;
+    const topY = 142;
+    const bottomSpace = 150; // space for the bottom button
+    const w = Math.min(420, W - marginX * 2);
+    const h = Math.max(180, Math.min(520, H - topY - bottomSpace));
+
+    this._domEl.style.width = `${w}px`;
+    this._domEl.style.height = `${h}px`;
+
+    this._domWrap.setPosition(W / 2, topY + h / 2);
   }
 
   _cleanupJsonp() {
@@ -175,7 +202,7 @@ class Score extends Phaser.Scene {
     if (this._hintText) this._hintText.setVisible(false);
 
     const cbName = `__fsg_top_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-    // Important for mobile browsers: avoid cached JSONP responses (incognito vs normal mode issue)
+    // Avoid cached JSONP responses (incognito vs normal mode issue)
     const url = `${this.API_URL}?action=top&token=${encodeURIComponent(this.TOKEN)}&callback=${cbName}&_=${Date.now()}`;
 
     const script = document.createElement("script");
@@ -195,7 +222,7 @@ class Score extends Phaser.Scene {
         return;
       }
       this._top = data;
-      this._renderRows();
+      this._renderDomRows();
       if (this._statusText) this._statusText.setVisible(false);
       if (this._hintText) this._hintText.setVisible(true);
     };
@@ -215,9 +242,15 @@ class Score extends Phaser.Scene {
 
   _showError() {
     if (this._statusText) {
-      this._statusText.setText("Neizdevās ielādēt TOP (pārbaudi deploy).").setVisible(true);
+      this._statusText.setText("Neizdevās ielādēt TOP").setVisible(true);
     }
     if (this._hintText) this._hintText.setVisible(false);
+
+    // Clear rows if any
+    try {
+      const rows = this._domEl && this._domEl.querySelector("#rows");
+      if (rows) rows.innerHTML = "";
+    } catch (e) {}
   }
 
   _formatTime(sec) {
@@ -227,81 +260,88 @@ class Score extends Phaser.Scene {
     return `${mm}:${ss}`;
   }
 
-  _renderRows() {
-    if (!this._content) return;
-    this._content.removeAll(true);
-
-    const W = this.scale.width;
-    const tableX = 28;
-    const tableW = W - 56;
-    const rowH = 28;
-
-    const colRankX = tableX + 18;
-    const colNameX = tableX + 70;
-    const colTimeX = tableX + tableW - 18;
-
-    const rowStyle = { fontFamily: "Arial", fontSize: "16px", color: "#ffffff" };
-
-    let y = 0;
-    for (let i = 0; i < this._top.length; i++) {
-      const r = this._top[i];
-      const rank = (r && r.rank) ? r.rank : (i + 1);
-      const name = (r && r.name) ? String(r.name) : "";
-      const time = this._formatTime(r && r.time);
-
-      // zebra row (subtle)
-      const zebraA = (i % 2 === 0) ? 0.06 : 0.0;
-      if (zebraA > 0) {
-        const bg = this.add.rectangle(W / 2, 0, tableW, rowH, 0xffffff, zebraA).setOrigin(0.5, 0);
-        bg.y = y - 2;
-        this._content.add(bg);
-      }
-
-      this._content.add(this.add.text(colRankX, y, String(rank), rowStyle).setOrigin(0, 0));
-      this._content.add(this.add.text(colNameX, y, name, rowStyle).setOrigin(0, 0));
-      this._content.add(this.add.text(colTimeX, y, time, rowStyle).setOrigin(1, 0));
-
-      y += rowH;
-    }
-
-    this._contentH = Math.max(0, y + 10);
-    this._setScroll(0);
+  _escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
-  _setScroll(newScroll) {
-    const H = this.scale.height;
+  _renderDomRows() {
+    if (!this._domEl) return;
+    const rows = this._domEl.querySelector("#rows");
+    if (!rows) return;
 
-    const tableY = 150;
-    const tableH = H - 150 - 120;
-    const headerH = 36;
-    const viewH = tableH - headerH;
+    rows.innerHTML = "";
 
-    const maxScroll = Math.max(0, this._contentH - viewH);
-    this._scrollY = Phaser.Math.Clamp(newScroll, 0, maxScroll);
+    for (let i = 0; i < Math.min(50, this._top.length); i++) {
+      const row = this._top[i] || {};
+      const rank = i + 1;
+      const name = this._escapeHtml(row.name);
+      const time = this._formatTime(row.timeSeconds);
 
-    if (this._content) {
-      const contentTop = tableY + headerH + 10;
-      this._content.setPosition(0, contentTop - this._scrollY);
+      const line = document.createElement("div");
+      line.style.display = "grid";
+      line.style.gridTemplateColumns = "54px 1fr 74px";
+      line.style.columnGap = "10px";
+      line.style.alignItems = "center";
+
+      const c1 = document.createElement("div");
+      c1.textContent = String(rank);
+
+      const c2 = document.createElement("div");
+      c2.textContent = name;
+      c2.style.whiteSpace = "nowrap";
+      c2.style.overflow = "hidden";
+      c2.style.textOverflow = "ellipsis";
+
+      const c3 = document.createElement("div");
+      c3.textContent = time;
+      c3.style.textAlign = "right";
+      c3.style.opacity = "0.95";
+
+      line.appendChild(c1);
+      line.appendChild(c2);
+      line.appendChild(c3);
+
+      rows.appendChild(line);
     }
   }
-
 
   _makeButton(x, y, w, h, label, color, colorOver) {
-    const bg = this.add.rectangle(x, y, w, h, color, 1).setOrigin(0.5);
-    bg.setStrokeStyle(2, 0xffffff, 0.15);
+    const bg = this.add
+      .rectangle(x, y, w, h, color, 1)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
 
-    const txt = this.add.text(x, y, label, {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
+    const txt = this.add
+      .text(x, y, label, {
+        fontFamily: "Arial",
+        fontSize: "22px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
 
-    const hit = this.add.rectangle(x, y, w, h, 0x000000, 0).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const pressIn = () => {
+      bg.setFillStyle(colorOver, 1);
+      this.tweens.killTweensOf([bg, txt]);
+      this.tweens.add({ targets: [bg, txt], scaleX: 0.96, scaleY: 0.96, duration: 70 });
+    };
+    const pressOut = () => {
+      bg.setFillStyle(color, 1);
+      this.tweens.killTweensOf([bg, txt]);
+      this.tweens.add({ targets: [bg, txt], scaleX: 1.0, scaleY: 1.0, duration: 90 });
+    };
 
-    hit.on("pointerover", () => bg.setFillStyle(colorOver, 1));
-    hit.on("pointerout", () => bg.setFillStyle(color, 1));
+    bg.on("pointerdown", pressIn);
+    bg.on("pointerup", pressOut);
+    bg.on("pointerout", pressOut);
+    bg.on("pointercancel", pressOut);
 
-    return hit;
+    bg.setLabel = (t) => txt.setText(t);
+    return bg;
   }
 }
