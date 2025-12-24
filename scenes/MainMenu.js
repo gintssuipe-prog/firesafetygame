@@ -8,6 +8,8 @@ class MainMenu extends Phaser.Scene {
 
     this._btnBg = null;
     this._btnText = null;
+    this._btnTopBg = null;
+    this._btnTopText = null;
     this._bg = null;
     this._gg = null;
 
@@ -58,6 +60,47 @@ class MainMenu extends Phaser.Scene {
         fontStyle: "bold"
       })
       .setOrigin(0.5);
+
+    // ----- TOP 50 poga (uz Score scēnu) -----
+    const btn2W = btnW;
+    const btn2H = btnH;
+    const btnTopBg = this.add
+      .rectangle(0, 0, btn2W, btn2H, 0x1f3a52, 1)
+      .setInteractive({ useHandCursor: true });
+
+    const btnTopText = this.add
+      .text(0, 0, "TOP 50", {
+        fontFamily: "Arial",
+        fontSize: "22px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
+
+    this._btnTopBg = btnTopBg;
+    this._btnTopText = btnTopText;
+
+    const pressIn2 = () => {
+      btnTopBg.setFillStyle(0x24455f, 1);
+      this.tweens.killTweensOf([btnTopBg, btnTopText]);
+      this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
+    };
+
+    const pressOut2 = () => {
+      btnTopBg.setFillStyle(0x1f3a52, 1);
+      this.tweens.killTweensOf([btnTopBg, btnTopText]);
+      this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
+    };
+
+    const goTop = () => {
+      if (this._starting) return;
+      this.scene.start("Score");
+    };
+
+    btnTopBg.on("pointerdown", () => pressIn2());
+    btnTopBg.on("pointerup", () => { pressOut2(); goTop(); });
+    btnTopBg.on("pointerout", () => pressOut2());
+    btnTopBg.on("pointercancel", () => pressOut2());
 
     this._btnBg = btnBg;
     this._btnText = btnText;
@@ -203,7 +246,12 @@ class MainMenu extends Phaser.Scene {
       btnBg.setPosition(W / 2, btnY);
       btnText.setPosition(W / 2, btnY);
 
-      const btnTop = btnY - btnH / 2;
+      // TOP 50 poga zem galvenās
+      const btn2Y = btnY + 74;
+      btnTopBg.setPosition(W / 2, btn2Y);
+      btnTopText.setPosition(W / 2, btn2Y);
+
+      const btnTopEdge = btnY - btnH / 2;
       const contentTop = isDesktop ? 78 : 56;
       const contentBottomLimit = btnTop - (isDesktop ? 26 : 18);
 
