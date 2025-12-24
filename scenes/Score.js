@@ -2,6 +2,7 @@ class Score extends Phaser.Scene {
   constructor() {
     super("Score");
     this.API_URL = "https://script.google.com/macros/s/AKfycbyh6BcVY_CBPW9v7SNo1bNp_XttvhxpeSdYPfrTdRCD4KWXLeLvv-0S3p96PX0Dv5BnrA/exec";
+    this.TOKEN = "FIRE2025";
     this._top = [];
     this._scrollY = 0;
     this._contentH = 0;
@@ -36,22 +37,32 @@ class Score extends Phaser.Scene {
 
     const gg = this.add.graphics();
 
-    // Title
-    const title = this.add.text(W / 2, 70, "TOP 50", {
+    // Title (match Finish typography/spacing)
+    const title = this.add.text(W / 2, 64, "TOP 50", {
       fontFamily: "Arial",
       fontSize: "34px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
 
-    // Status (loading / error)
-    const status = this.add.text(W / 2, 118, "Ielādē rezultātu tabulu…", {
+    // Status (loading / error) — same style as Finish subtitle
+    const status = this.add.text(W / 2, 108, "Ielādē rezultātu tabulu…", {
       fontFamily: "Arial",
       fontSize: "18px",
       color: "#ffffff",
-      fontStyle: "bold"
+      alpha: 0.95
     }).setOrigin(0.5);
     this._statusText = status;
+
+    // Hint (shown after successful load)
+    const hint = this.add.text(W / 2, 108, "Skrollē tabulu", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#ffffff",
+      alpha: 0.95
+    }).setOrigin(0.5);
+    hint.setVisible(false);
+    this._hintText = hint;
 
     // Table area geometry
     const tableX = 28;
@@ -161,9 +172,11 @@ class Score extends Phaser.Scene {
     if (this._statusText) {
       this._statusText.setText("Ielādē rezultātu tabulu…").setVisible(true);
     }
+    if (this._hintText) this._hintText.setVisible(false);
 
     const cbName = `__fsg_top_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-    const url = `${this.API_URL}?action=top&callback=${cbName}`;
+    // Important for mobile browsers: avoid cached JSONP responses (incognito vs normal mode issue)
+    const url = `${this.API_URL}?action=top&token=${encodeURIComponent(this.TOKEN)}&callback=${cbName}&_=${Date.now()}`;
 
     const script = document.createElement("script");
     script.src = url;
@@ -184,6 +197,7 @@ class Score extends Phaser.Scene {
       this._top = data;
       this._renderRows();
       if (this._statusText) this._statusText.setVisible(false);
+      if (this._hintText) this._hintText.setVisible(true);
     };
 
     script.onerror = () => {
@@ -203,6 +217,7 @@ class Score extends Phaser.Scene {
     if (this._statusText) {
       this._statusText.setText("Neizdevās ielādēt TOP (pārbaudi deploy).").setVisible(true);
     }
+    if (this._hintText) this._hintText.setVisible(false);
   }
 
   _formatTime(sec) {
@@ -212,7 +227,7 @@ class Score extends Phaser.Scene {
     return `${mm}:${ss}`;
   }
 
-    _renderRows() {
+  _renderRows() {
     if (!this._content) return;
     this._content.removeAll(true);
 
@@ -270,27 +285,6 @@ class Score extends Phaser.Scene {
     }
   }
 
-
-  _makeButton(newScroll) {
-    // Content is inside masked area: we move container up/down
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    const tableY = 150;
-    const tableH = H - 150 - 120;
-    const headerH = 36;
-    const viewH = tableH - headerH;
-
-    const maxScroll = Math.max(0, this._contentH - viewH);
-    this._scrollY = Phaser.Math.Clamp(newScroll, 0, maxScroll);
-
-    if (this._content) {
-      const startY = tableY + headerH + 10;
-      this._content.y = -this._scrollY;
-      // content container anchored at y=0; rows start at startY, so move container relative to that
-      this._content.setPosition(0, -this._scrollY);
-    }
-  }
 
   _makeButton(x, y, w, h, label, color, colorOver) {
     const bg = this.add.rectangle(x, y, w, h, color, 1).setOrigin(0.5);
