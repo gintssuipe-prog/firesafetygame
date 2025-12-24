@@ -17,6 +17,7 @@ class Finish extends Phaser.Scene {
     // reset per-run state (important for RESTART -> play again)
     this._saved = false;
     this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
 
     // input (HTML element, not Phaser DOM)
     this._nameInput = null;
@@ -52,7 +53,8 @@ class Finish extends Phaser.Scene {
     this._insertRank = null;
     this._pendingTimeSec = null;
 
-    this.disableNameInput(); // remove old input, if any
+    this.disableNameInput();
+      if (this._isMobile) this._unlockViewport(); // remove old input, if any
   }
 
   preload() {
@@ -117,11 +119,13 @@ class Finish extends Phaser.Scene {
 
     this._btnRestart.onClick(() => {
       this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
       this.scene.start('MainMenu');
     });
 
     this._btnExit.onClick(() => {
       this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
       try { window.open('', '_self'); window.close(); } catch (e) {}
       try { this.game.destroy(true); } catch (e) {}
       try { window.location.href = 'about:blank'; } catch (e) {}
@@ -170,6 +174,7 @@ class Finish extends Phaser.Scene {
 
     this.events.once('shutdown', () => {
       this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
       if (this._onResize) this.scale.off('resize', this._onResize);
       this._onResize = null;
     });
@@ -363,6 +368,7 @@ class Finish extends Phaser.Scene {
     const shouldHaveInput = this._qualifies && this.result.reason === 'success' && !this._saved;
     if (!shouldHaveInput) {
       this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
       this._btnSave.setEnabled(false);
       return;
     }
@@ -408,8 +414,8 @@ class Finish extends Phaser.Scene {
 
     // Keep save butt
     // Focus tracking (mobilajā izmantojam, lai ignorētu soft-keyboard resize)
-    input.addEventListener('focus', () => { this._inputFocused = true; });
-    input.addEventListener('blur', () => { this._inputFocused = false; });
+    input.addEventListener('focus', () => { this._inputFocused = true; if (this._isMobile) this._lockViewport(); });
+    input.addEventListener('blur', () => { this._inputFocused = false; if (this._isMobile) this._unlockViewport(); });
 // on enabled state sensible
     input.addEventListener('input', this._onNameInput = () => {
       if (this._saved) return;
@@ -426,6 +432,7 @@ class Finish extends Phaser.Scene {
   disableNameInput() {
     if (!this._nameInput) return;
     this._inputFocused = false;
+    if (this._isMobile) this._unlockViewport();
     try {
       if (this._onNameInput) this._nameInput.removeEventListener('input', this._onNameInput);
     } catch (e) {}
@@ -437,6 +444,77 @@ class Finish extends Phaser.Scene {
     } catch (e) {}
     this._nameInput = null;
     this._onNameInput = null;
+  }
+
+
+  _lockViewport() {
+    // Mobilajās ierīcēs soft-keyboard bieži maina viewport izmēru un izraisa “pārleciens/restart” efektu.
+    // Šeit mēs “iesaldējam” lapas body, lai UI paliek stabils, kamēr ievade ir fokusā.
+    if (this._viewportLocked) return;
+    this._viewportLocked = true;
+
+    const body = document.body;
+    this._prevBodyStyle = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      height: body.style.height,
+      overflow: body.style.overflow
+    };
+
+    body.style.position = 'fixed';
+    body.style.top = '0';
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    body.style.height = `${window.innerHeight}px`;
+    body.style.overflow = 'hidden';
+
+    // Dažos pārlūkos (Android) palīdz uzturēt stabilu augstumu, kad klaviatūra atveras/aizveras.
+    this._onViewportResize = () => {
+      try {
+        body.style.height = `${window.innerHeight}px`;
+        window.scrollTo(0, 0);
+      } catch (e) {}
+    };
+
+    try {
+      window.addEventListener('resize', this._onViewportResize, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', this._onViewportResize, { passive: true });
+      }
+    } catch (e) {}
+  }
+
+  _unlockViewport() {
+    if (!this._viewportLocked) return;
+    this._viewportLocked = false;
+
+    const body = document.body;
+    try {
+      if (this._onViewportResize) {
+        window.removeEventListener('resize', this._onViewportResize);
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', this._onViewportResize);
+        }
+      }
+    } catch (e) {}
+    this._onViewportResize = null;
+
+    if (this._prevBodyStyle) {
+      body.style.position = this._prevBodyStyle.position;
+      body.style.top = this._prevBodyStyle.top;
+      body.style.left = this._prevBodyStyle.left;
+      body.style.right = this._prevBodyStyle.right;
+      body.style.width = this._prevBodyStyle.width;
+      body.style.height = this._prevBodyStyle.height;
+      body.style.overflow = this._prevBodyStyle.overflow;
+    }
+    this._prevBodyStyle = null;
+
+    try { window.scrollTo(0, 0); } catch (e) {}
   }
 
   updateNameInputPosition() {
@@ -518,6 +596,7 @@ class Finish extends Phaser.Scene {
         this._saved = true;
         // Remove input after save (critical UX)
         this.disableNameInput();
+      if (this._isMobile) this._unlockViewport();
         this._btnSave.setLabel('Saglabāts ✓');
         this._btnSave.setEnabled(false);
 
