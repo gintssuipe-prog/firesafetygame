@@ -51,7 +51,7 @@ class MainMenu extends Phaser.Scene {
     const btnH = 58;
 
     const btnBg = this.add
-      .rectangle(0, 0, btnW, btnH, 0x1f5a3a, 1)
+      .rectangle(0, 0, btnW, btnH, 0x184a30, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
@@ -67,7 +67,7 @@ class MainMenu extends Phaser.Scene {
     const btn2W = btnW;
     const btn2H = btnH;
     const btnTopBg = this.add
-      .rectangle(0, 0, btn2W, btn2H, 0x1f5a3a, 1)
+      .rectangle(0, 0, btn2W, btn2H, 0x1b3f57, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnTopText = this.add
@@ -84,7 +84,7 @@ class MainMenu extends Phaser.Scene {
 
     // ----- IZIET NO SPĒLES poga -----
     const btnExitBg = this.add
-      .rectangle(0, 0, btn2W, btn2H, 0x7a2020, 1)
+      .rectangle(0, 0, btn2W, btn2H, 0x641818, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnExitText = this.add
@@ -100,13 +100,13 @@ class MainMenu extends Phaser.Scene {
     this._btnExitText = btnExitText;
 
     const pressInExit = () => {
-      btnExitBg.setFillStyle(0x8b2a2a, 1);
+      btnExitBg.setFillStyle(0x7a2020, 1);
       this.tweens.killTweensOf([btnExitBg, btnExitText]);
       this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
 
     const pressOutExit = () => {
-      btnExitBg.setFillStyle(0x7a2020, 1);
+      btnExitBg.setFillStyle(0x641818, 1);
       this.tweens.killTweensOf([btnExitBg, btnExitText]);
       this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -130,7 +130,7 @@ class MainMenu extends Phaser.Scene {
     };
 
     const pressOut2 = () => {
-      btnTopBg.setFillStyle(0x1f5a3a, 1);
+      btnTopBg.setFillStyle(0x1b3f57, 1);
       this.tweens.killTweensOf([btnTopBg, btnTopText]);
       this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -149,13 +149,13 @@ class MainMenu extends Phaser.Scene {
     this._btnText = btnText;
 
     const pressIn = () => {
-      btnBg.setFillStyle(0x2a7c58, 1);
+      btnBg.setFillStyle(0x1f5a3a, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
 
     const pressOut = () => {
-      btnBg.setFillStyle(0x1f5a3a, 1);
+      btnBg.setFillStyle(0x184a30, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -282,25 +282,25 @@ class MainMenu extends Phaser.Scene {
       p2.setWordWrapWidth(W - 46, true);
       warning.setWordWrapWidth(W - 46, true);
 
-      // ✅ pogas Y SALĀGOTS ar Intro (desktop: -165, mobilais: -150)
-      const hintY = H - (isDesktop ? 165 : 150);
-      const btnY = hintY + 75;
+      // ✅ Pogas izvietojam NO APAČAS uz augšu, lai 3 pogas vienmēr paliek redzamas (īpaši mobilajā)
+      const bottomMargin = isDesktop ? 78 : 92;
+      const btn3Y = H - bottomMargin; // IZIET NO SPĒLES (apakšā)
+      const btn2Y = btn3Y - 74;      // TOP 50 (vidū)
+      const btnY  = btn2Y - 74;      // SPĒLĒT SPĒLI (augšā)
 
       btnBg.setPosition(W / 2, btnY);
       btnText.setPosition(W / 2, btnY);
 
-      // TOP 50 poga zem galvenās
-      const btn2Y = btnY + 74;
       btnTopBg.setPosition(W / 2, btn2Y);
       btnTopText.setPosition(W / 2, btn2Y);
 
-      // IZIET NO SPĒLES poga zem TOP 50
-      const btn3Y = btn2Y + 74;
       btnExitBg.setPosition(W / 2, btn3Y);
       btnExitText.setPosition(W / 2, btn3Y);
 
+
       const btnTopEdge = btnY - btnH / 2;
-      const contentTop = isDesktop ? 78 : 56;
+      // Sarkanais brīdinājums ir pašā augšā, tāpēc contentTop turam ļoti augstu.
+      const contentTop = isDesktop ? 22 : 16;
       const contentBottomLimit = btnTopEdge - (isDesktop ? 26 : 18);
 
       const GAP_S = isDesktop ? 16 : 12;
@@ -313,6 +313,10 @@ class MainMenu extends Phaser.Scene {
 
       const layoutOnce = () => {
         let y = contentTop;
+
+        // Brīdinājums pirms jebkāda cita konteksta (mazāks fonts nekā virsrakstam)
+        warning.setPosition(W / 2, y);
+        y += warning.height + GAP_M;
 
         title.setPosition(W / 2, y);
         y += title.height + GAP_M;
@@ -338,10 +342,7 @@ class MainMenu extends Phaser.Scene {
 
         const controlsBottom = y + ctrlRows.length * lineH;
 
-        const warningY = Math.round((controlsBottom + contentBottomLimit) / 2);
-        warning.setPosition(W / 2, warningY);
-
-        const warningBottom = warningY + warning.height;
+        const warningBottom = warning.y + warning.height;
         return Math.max(controlsBottom, warningBottom);
       };
 
