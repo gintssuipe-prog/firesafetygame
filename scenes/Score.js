@@ -127,9 +127,9 @@ class Score extends Phaser.Scene {
     el.style.overflowY = "auto";
     el.style.overflowX = "hidden";
     el.style.webkitOverflowScrolling = "touch";
-    el.style.background = "rgba(0,0,0,0.18)";
-    el.style.borderRadius = "10px";
-    el.style.padding = "10px 10px";
+    el.style.background = "transparent";
+    // no background box
+    el.style.padding = "0";
     el.style.color = "#fff";
     el.style.fontFamily = "Arial, sans-serif";
     el.style.fontSize = "16px";
@@ -149,6 +149,9 @@ class Score extends Phaser.Scene {
     header.style.columnGap = "10px";
     header.style.opacity = "0.95";
     header.style.fontWeight = "bold";
+    header.style.borderBottom = "1px solid rgba(255,255,255,0.25)";
+    header.style.paddingBottom = "6px";
+    header.style.marginBottom = "6px";
     header.innerHTML = `<div>Vieta</div><div>Vārds</div><div style="text-align:right;">Laiks</div>`;
 
     inner.appendChild(header);
@@ -157,7 +160,7 @@ class Score extends Phaser.Scene {
     rows.id = "rows";
     rows.style.display = "flex";
     rows.style.flexDirection = "column";
-    rows.style.gap = "6px";
+    rows.style.gap = "0";
     inner.appendChild(rows);
 
     el.appendChild(inner);
@@ -174,15 +177,17 @@ class Score extends Phaser.Scene {
   _syncDomTable(W, H) {
     if (!this._domEl || !this._domWrap) return;
 
-    const marginX = 22;
+    const marginX = Math.max(14, Math.floor(W * 0.04));
     const topY = 142;
-    const bottomSpace = 150; // space for the bottom button
-    const w = Math.min(420, W - marginX * 2);
-    const h = Math.max(180, Math.min(520, H - topY - bottomSpace));
+    const bottomSpace = 120; // space for the bottom button
+    const w = Math.min(560, Math.max(260, W - marginX * 2));
+    const h = Math.max(240, Math.min(620, H - topY - bottomSpace));
 
     this._domEl.style.width = `${w}px`;
     this._domEl.style.height = `${h}px`;
 
+    this._domWrap.setOrigin(0.5);
+    this._domWrap.setScrollFactor(0);
     this._domWrap.setPosition(W / 2, topY + h / 2);
   }
 
@@ -301,6 +306,7 @@ class Score extends Phaser.Scene {
       c3.textContent = time;
       c3.style.textAlign = "right";
       c3.style.opacity = "0.95";
+      c3.style.fontVariantNumeric = "tabular-nums";
 
       line.appendChild(c1);
       line.appendChild(c2);
