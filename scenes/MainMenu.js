@@ -112,10 +112,12 @@ class MainMenu extends Phaser.Scene {
     };
 
     const safeExit = () => {
-      // Web drošības dēļ window.close() bieži nestrādā, ja cilni neatvēra ar window.open.
       try { window.close(); } catch (e) {}
-      // Fallback: atgriežam uz Intro (lietotājs var aizvērt cilni)
-      this.scene.start("Intro");
+      // Browsers often block window.close() if the tab wasn't opened via window.open().
+      // Show an explicit screen instructing the user to close the tab.
+      setTimeout(() => {
+        try { this.scene.start("BadExit"); } catch (e) {}
+      }, 150);
     };
 
     btnExitBg.on("pointerdown", () => pressInExit());

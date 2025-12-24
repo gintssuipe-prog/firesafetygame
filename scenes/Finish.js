@@ -4,15 +4,18 @@ class Finish extends Phaser.Scene {
     this.API_URL = "https://script.google.com/macros/s/AKfycbyh6BcVY_CBPW9v7SNo1bNp_XttvhxpeSdYPfrTdRCD4KWXLeLvv-0S3p96PX0Dv5BnrA/exec";
     this.TOKEN = "FIRE2025";
 
-    this.result = { reason: "exit", timeSec: null };
-
+    this._data = null;
     this._saved = false;
     this._nameInput = null;
-    this._cleanupBound = null;
+    this._syncPos = null;
+    this._onResize = null;
+
+    this._msgText = null;
+    this._saveBtn = null;
   }
 
   init(data) {
-    this.result = data || { reason: "exit", timeSec: null };
+    this._data = data || {};
     this._saved = false;
   }
 
@@ -20,77 +23,112 @@ class Finish extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // Ensure cleanup always runs
-    this._cleanupBound = () => this.cleanup();
-    this.events.once("shutdown", this._cleanupBound);
-    this.events.once("destroy", this._cleanupBound);
+    const reason = String(this._data.reason || "exit");
+    const success = reason === "success";
+    const elapsedMs = Number(this._data.elapsedMs);
+    const timeSec = success && Number.isFinite(elapsedMs) ? Math.max(1, Math.round(elapsedMs / 1000)) : null;
 
-    // dark overlay
-    this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.55);
+    this.events.once("shutdown", this.cleanup, this);
+    this.events.once("destroy", this.cleanup, this);
 
-    const success = this.result.reason === "success" && typeof this.result.timeSec === "number";
+    // Background like MainMenu/Score
+    this.cameras.main.setBackgroundColor("#101a24");
 
+    const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5).setAlpha(0.12);
+    const g = this.add.graphics();
+
+    const applyBg = (w, h) => {
+      bg.setPosition(w / 2, h / 2);
+      const s = Math.max(w / bg.width, h / bg.height);
+      bg.setScale(s);
+
+      g.clear();
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
+      g.fillRect(0, Math.floor(h * 0.28), w, Math.ceil(h * 0.72));
+    };
+
+    applyBg(W, H);
+    this._onResize = (gameSize) => applyBg(gameSize.width, gameSize.height);
+    this.scale.on("resize", this._onResize);
+
+    // Title
     const title = success ? "MISIJA IR IZPILDĪTA!" : "MISIJA NAV IZPILDĪTA!";
-    this.add.text(W/2, 64, title, {
-      fontFamily: "Arial",
-      fontSize: "34px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-
-    if (success) {
-      this.add.text(W/2, 102, `Tavs laiks: ${this.formatTime(this.result.timeSec)}`, {
+    this.add
+      .text(W / 2, 64, title, {
         fontFamily: "Arial",
-        fontSize: "18px",
+        fontSize: "34px",
         color: "#ffffff",
         fontStyle: "bold"
-      }).setOrigin(0.5);
-    } else {
-      const sub = (this.result.reason === "timeout") ? "Laiks beidzies (15 min)." : "Iziets no spēles.";
-      this.add.text(W/2, 104, sub, {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ffffff"
-      }).setOrigin(0.5);
-    }
+      })
+      .setOrigin(0.5);
 
-    // Buttons row at bottom
-    const btnY = H - 70;
-    const btnW = Math.min(170, (W - 70) / 2);
-    const btnH = 54;
-
-    const btnMenu = this.makeButton(W/2 - btnW/2 - 10, btnY, btnW, btnH, "UZ MENU", 0x1f3e62, 0x2a537f);
-    btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
-
-    const btnTop = this.makeButton(W/2 + btnW/2 + 10, btnY, btnW, btnH, "TOP 50", 0x1f3a52, 0x24455f);
-    btnTop.on("pointerup", () => this.scene.start("Score"));
-
-    // Save UI only on success
+    // Subtitle
     if (success) {
-      const y = 155;
-
-      this._msg = this.add.text(W/2, y, "Ieraksti vārdu un saglabā rezultātu", {
-        fontFamily:"Arial",
-        fontSize:"15px",
-        color:"#ffffff"
-      }).setOrigin(0.5);
-
-      this.createNameInput(W/2 - 90, y + 42, 180, 36);
-
-      this._btnSave = this.makeButton(W/2 + 90 + 68, y + 42, 120, 36, "Saglabāt", 0x2c4d72, 0x35618f);
-      this._btnSave.on("pointerup", () => this.submitScore());
+      this.add
+        .text(W / 2, 106, `Tavs laiks: ${this.formatTime(timeSec)}`, {
+          fontFamily: "Arial",
+          fontSize: "18px",
+          color: "#ffffff",
+          fontStyle: "bold"
+        })
+        .setOrigin(0.5);
     } else {
-      this.add.text(W/2, 150, "Rezultātu var saglabāt tikai pēc veiksmīgas misijas.", {
-        fontFamily:"Arial",
-        fontSize:"14px",
-        color:"#ffffff",
-        alpha: 0.85
-      }).setOrigin(0.5);
+      const sub = reason === "timeout" ? "Laiks beidzies (15 min.)" : "Iziets no spēles";
+      this.add
+        .text(W / 2, 108, sub, {
+          fontFamily: "Arial",
+          fontSize: "18px",
+          color: "#ffffff",
+          alpha: 0.95
+        })
+        .setOrigin(0.5);
     }
+
+    // Panel
+    const panelW = Math.min(420, W - 44);
+    const panelH = Math.min(300, H - 240);
+    const panelTop = 142;
+    const panel = this.add.rectangle(W / 2, panelTop + panelH / 2, panelW, panelH, 0x000000, 0.25);
+    panel.setStrokeStyle(2, 0xffffff, 0.10);
+
+    if (success) {
+      this._msgText = this.add
+        .text(W / 2, panelTop + 26, "Ieraksti vārdu un saglabā rezultātu", {
+          fontFamily: "Arial",
+          fontSize: "16px",
+          color: "#ffffff",
+          alpha: 0.95,
+          align: "center",
+          wordWrap: { width: panelW - 28 }
+        })
+        .setOrigin(0.5);
+
+      const inputY = panelTop + 92;
+      this.createNameInput(W / 2, inputY, Math.min(280, panelW - 60), 44);
+
+      const saveY = panelTop + 160;
+      this._saveBtn = this.makeButton(W / 2, saveY, 200, 58, "SAGLABĀT", 0x1b3f57, 0x224c69);
+      this._saveBtn.on("pointerup", () => this.submitScore(timeSec));
+    } else {
+      this._msgText = this.add
+        .text(W / 2, panelTop + panelH / 2, "Rezultātu var saglabāt tikai pēc veiksmīgas misijas.", {
+          fontFamily: "Arial",
+          fontSize: "16px",
+          color: "#ffffff",
+          alpha: 0.85,
+          align: "center",
+          wordWrap: { width: panelW - 28 }
+        })
+        .setOrigin(0.5);
+    }
+
+    // Bottom button: UZ MENU
+    const btnY = H - 92;
+    const btnMenu = this.makeButton(W / 2, btnY, 200, 58, "UZ MENU", 0x184a30, 0x1f5c3a);
+    btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
   }
 
-  createNameInput(x, y, w, h) {
-    // DOM input for mobile keyboard
+  createNameInput(centerX, centerY, w, h) {
     const input = document.createElement("input");
     input.type = "text";
     input.placeholder = "Vārds";
@@ -98,17 +136,16 @@ class Finish extends Phaser.Scene {
     input.autocomplete = "off";
     input.autocapitalize = "words";
     input.spellcheck = false;
-    input.value = "";
 
     input.style.position = "fixed";
     input.style.left = "0px";
     input.style.top = "0px";
     input.style.width = `${w}px`;
     input.style.height = `${h}px`;
-    input.style.padding = "0 10px";
+    input.style.padding = "0 12px";
     input.style.borderRadius = "10px";
     input.style.border = "1px solid rgba(255,255,255,0.25)";
-    input.style.background = "rgba(0,0,0,0.25)";
+    input.style.background = "rgba(0,0,0,0.30)";
     input.style.color = "#fff";
     input.style.fontSize = "18px";
     input.style.outline = "none";
@@ -116,13 +153,13 @@ class Finish extends Phaser.Scene {
     document.body.appendChild(input);
     this._nameInput = input;
 
-    // Place it over canvas coordinates
     const syncPos = () => {
       if (!this._nameInput) return;
-      const canvas = this.sys.game.canvas;
-      const rect = canvas.getBoundingClientRect();
-      const localX = x - w/2;
-      const localY = y - h/2;
+      const rect = this.sys.game.canvas.getBoundingClientRect();
+
+      const localX = centerX - w / 2;
+      const localY = centerY - h / 2;
+
       const cssX = rect.left + (localX / this.scale.width) * rect.width;
       const cssY = rect.top + (localY / this.scale.height) * rect.height;
       const cssW = (w / this.scale.width) * rect.width;
@@ -135,66 +172,83 @@ class Finish extends Phaser.Scene {
       input.style.lineHeight = `${Math.round(cssH)}px`;
     };
 
+    this._syncPos = syncPos;
     syncPos();
-    // No resize handlers here (mobile safe). We only update position on each frame while alive.
     this.events.on("postupdate", syncPos);
   }
 
-  async submitScore() {
+  async submitScore(timeSec) {
     if (this._saved) return;
     if (!this._nameInput) return;
 
-    const name = String(this._nameInput.value || "").trim().replace(/\s+/g, " ").slice(0, 28);
+    const name = String(this._nameInput.value || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .slice(0, 28);
+
     if (!name) {
-      if (this._msg) this._msg.setText("Ieraksti vārdu.");
+      if (this._msgText) this._msgText.setText("Ieraksti vārdu.");
       return;
     }
 
-    const timeSec = Number(this.result.timeSec);
-    if (!Number.isFinite(timeSec) || timeSec <= 0) return;
-
-    // Lock UI
     this._saved = true;
-    if (this._btnSave) this._btnSave.disableInteractive();
-    if (this._msg) this._msg.setText("Saglabā...");
+
+    try { this._nameInput.disabled = true; } catch (e) {}
+    if (this._saveBtn) this._saveBtn.disableInteractive();
+    if (this._msgText) this._msgText.setText("Saglabā...");
 
     try {
-      const url = `${this.API_URL}?action=submit&token=${encodeURIComponent(this.TOKEN)}&name=${encodeURIComponent(name)}&time=${encodeURIComponent(timeSec)}`;
-      const resp = await this.jsonp(url);
+      const base = `${this.API_URL}?action=submit&token=${encodeURIComponent(this.TOKEN)}&name=${encodeURIComponent(name)}&time=${encodeURIComponent(timeSec)}`;
+      const resp = await this.jsonp(base);
+
       if (resp && resp.ok) {
-        if (this._msg) this._msg.setText("Saglabāts ✓");
-        if (this._nameInput) this._nameInput.disabled = true;
-        if (this._btnSave) this._btnSave.setLabel("Saglabāts ✓");
+        if (this._msgText) this._msgText.setText("Saglabāts ✓");
+        if (this._saveBtn) this._saveBtn.setLabel("SAGLABĀTS ✓");
       } else {
         this._saved = false;
-        if (this._msg) this._msg.setText((resp && resp.error) ? resp.error : "Neizdevās saglabāt.");
-        if (this._btnSave) this._btnSave.setLabel("Saglabāt");
-        if (this._btnSave) this._btnSave.setInteractive({ useHandCursor:true });
+        try { this._nameInput.disabled = false; } catch (e) {}
+        if (this._saveBtn) {
+          this._saveBtn.setLabel("SAGLABĀT");
+          this._saveBtn.setInteractive({ useHandCursor: true });
+        }
+        if (this._msgText) this._msgText.setText((resp && resp.error) ? resp.error : "Neizdevās saglabāt.");
       }
     } catch (e) {
       this._saved = false;
-      if (this._msg) this._msg.setText("Neizdevās saglabāt (tīkls).");
-      if (this._btnSave) this._btnSave.setLabel("Saglabāt");
-      if (this._btnSave) this._btnSave.setInteractive({ useHandCursor:true });
+      try { this._nameInput.disabled = false; } catch (e2) {}
+      if (this._saveBtn) {
+        this._saveBtn.setLabel("SAGLABĀT");
+        this._saveBtn.setInteractive({ useHandCursor: true });
+      }
+      if (this._msgText) this._msgText.setText("Neizdevās saglabāt (tīkls).");
     }
   }
 
   cleanup() {
     try {
-      if (this._nameInput) {
-        this._nameInput.remove();
-        this._nameInput = null;
-      }
-    } catch(e) {}
+      if (this._onResize) this.scale.off("resize", this._onResize);
+      this._onResize = null;
+    } catch (e) {}
+
+    // critical for second runs
+    try {
+      if (this._syncPos) this.events.off("postupdate", this._syncPos);
+      this._syncPos = null;
+    } catch (e) {}
+
+    try {
+      if (this._nameInput) this._nameInput.remove();
+      this._nameInput = null;
+    } catch (e) {}
   }
 
   jsonp(url) {
     return new Promise((resolve, reject) => {
-      const cb = `cb_${Date.now()}_${Math.floor(Math.random()*1e6)}`;
+      const cb = `cb_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
       const script = document.createElement("script");
 
       const cleanup = () => {
-        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
         if (script.parentNode) script.parentNode.removeChild(script);
       };
 
@@ -229,24 +283,37 @@ class Finish extends Phaser.Scene {
   }
 
   makeButton(x, y, w, h, label, color, colorOver) {
-    const bg = this.add.rectangle(x, y, w, h, color, 0.95).setOrigin(0.5);
-    const txt = this.add.text(x, y, label, {
-      fontFamily: "Arial",
-      fontSize: (h >= 50 ? "18px" : "16px"),
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-
-    const hit = this.add.rectangle(x, y, w, h, 0x000000, 0)
+    const bg = this.add
+      .rectangle(x, y, w, h, color, 1)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    hit.on("pointerover", () => bg.setFillStyle(colorOver, 0.98));
-    hit.on("pointerout", () => bg.setFillStyle(color, 0.95));
-    hit.on("pointerdown", () => { bg.setFillStyle(colorOver, 1); txt.setScale(0.98); });
-    hit.on("pointerup", () => { bg.setFillStyle(colorOver, 0.98); txt.setScale(1.0); });
+    const txt = this.add
+      .text(x, y, label, {
+        fontFamily: "Arial",
+        fontSize: "22px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      })
+      .setOrigin(0.5);
 
-    hit.setLabel = (t) => txt.setText(t);
-    return hit;
+    const pressIn = () => {
+      bg.setFillStyle(colorOver, 1);
+      this.tweens.killTweensOf([bg, txt]);
+      this.tweens.add({ targets: [bg, txt], scaleX: 0.96, scaleY: 0.96, duration: 70 });
+    };
+    const pressOut = () => {
+      bg.setFillStyle(color, 1);
+      this.tweens.killTweensOf([bg, txt]);
+      this.tweens.add({ targets: [bg, txt], scaleX: 1.0, scaleY: 1.0, duration: 90 });
+    };
+
+    bg.on("pointerdown", pressIn);
+    bg.on("pointerup", pressOut);
+    bg.on("pointerout", pressOut);
+    bg.on("pointercancel", pressOut);
+
+    bg.setLabel = (t) => txt.setText(t);
+    return bg;
   }
 }

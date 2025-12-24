@@ -5,210 +5,297 @@ class Score extends Phaser.Scene {
     this._top = [];
     this._scrollY = 0;
     this._contentH = 0;
+
+    this._onWheel = null;
+    this._dragging = false;
+    this._dragStartY = 0;
+    this._scrollStartY = 0;
+    this._jsonpTimeout = null;
+    this._jsonpCleanup = null;
+  }
+
+  init() {
+    // Reset every time we enter Score
+    this._top = [];
+    this._scrollY = 0;
+    this._contentH = 0;
+    this._dragging = false;
+    this._dragStartY = 0;
+    this._scrollStartY = 0;
   }
 
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // dark overlay
-    this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.55);
+    this.cameras.main.setBackgroundColor("#101a24");
 
-    this.add.text(W/2, 60, "TOP 50", {
+    // Background image (same as MainMenu)
+    const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5);
+    bg.setAlpha(0.12);
+
+    const gg = this.add.graphics();
+
+    // Title
+    const title = this.add.text(W / 2, 70, "TOP 50", {
       fontFamily: "Arial",
       fontSize: "34px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
 
-    this._status = this.add.text(W/2, 105, "Ielādē rezultātu tabulu...", {
+    // Status (loading / error)
+    const status = this.add.text(W / 2, 118, "Ielādē rezultātu tabulu…", {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "18px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
+    this._statusText = status;
 
-    // table viewport
-    const pad = 26;
-    const tableTop = 140;
-    const tableBottom = H - 150;
-    this._viewX = pad;
-    this._viewY = tableTop;
-    this._viewW = W - pad*2;
-    this._viewH = Math.max(220, tableBottom - tableTop);
-
-    // header
+    // Table area geometry
+    const tableX = 28;
+    const tableY = 150;
+    const tableW = W - 56;
+    const tableH = H - 150 - 120; // leave room for button
     const headerH = 36;
-    this.add.rectangle(W/2, this._viewY + headerH/2, this._viewW, headerH, 0x000000, 0.35);
+    const rowH = 28;
 
-    const colRank = this._viewX + 14;
-    const colName = this._viewX + 90;
-    const colTime = this._viewX + this._viewW - 14;
+    // Semi-transparent container (no white background)
+    const panel = this.add.rectangle(W / 2, tableY + tableH / 2, tableW, tableH, 0x000000, 0.25);
+    panel.setStrokeStyle(2, 0xffffff, 0.12);
 
-    const hStyle = { fontFamily:"Arial", fontSize:"16px", color:"#ffffff", fontStyle:"bold" };
-    this.add.text(colRank, this._viewY + 8, "Vieta", hStyle).setOrigin(0,0);
-    this.add.text(colName, this._viewY + 8, "Vārds", hStyle).setOrigin(0,0);
-    this.add.text(colTime, this._viewY + 8, "Laiks", hStyle).setOrigin(1,0);
+    // Header
+    const headerBg = this.add.rectangle(W / 2, tableY + headerH / 2, tableW, headerH, 0x000000, 0.45);
+    headerBg.setStrokeStyle(1, 0xffffff, 0.10);
 
-    // content container (rows)
-    this._rowsCont = this.add.container(this._viewX, this._viewY + headerH);
+    const colRankX = tableX + 18;
+    const colNameX = tableX + 70;
+    const colTimeX = tableX + tableW - 18;
 
-    // mask for rows (exclude header)
-    const g = this.make.graphics();
-    g.fillStyle(0xffffff);
-    g.fillRect(this._viewX, this._viewY + headerH, this._viewW, this._viewH - headerH);
-    const mask = g.createGeometryMask();
-    this._rowsCont.setMask(mask);
-    g.destroy();
+    const hdrStyle = { fontFamily: "Arial", fontSize: "16px", color: "#ffffff", fontStyle: "bold" };
+    this.add.text(colRankX, tableY + 9, "Vieta", hdrStyle).setOrigin(0, 0);
+    this.add.text(colNameX, tableY + 9, "Vārds", hdrStyle).setOrigin(0, 0);
+    this.add.text(colTimeX, tableY + 9, "Laiks", hdrStyle).setOrigin(1, 0);
 
-    // buttons
-    this._btnMenu = this.makeBigButton(W/2, H - 70, "UZ MENU", 0x1f3e62, 0x2a537f);
-    this._btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
+    // Content container (scrollable)
+    const content = this.add.container(0, 0);
+    this._content = content;
 
-    // scrolling
-    this.enableScroll();
+    // Mask to clip rows
+    const maskG = this.make.graphics({ x: 0, y: 0, add: false });
+    maskG.fillStyle(0xffffff);
+    maskG.fillRect(tableX, tableY + headerH, tableW, tableH - headerH);
+    const mask = maskG.createGeometryMask();
+    content.setMask(mask);
 
-    // load
-    this.loadTop();
-  }
+    // Button (same width as MainMenu)
+    const btnW = 200;
+    const btnH = 58;
+    const btnY = H - 70;
 
-  enableScroll() {
-    // wheel (desktop)
-    this.input.on("wheel", (pointer, gx, gy, dx, dy) => {
-      this.scrollBy(dy);
+    const btnMenu = this._makeButton(W / 2, btnY, btnW, btnH, "UZ MENU", 0x184a30, 0x1f5c3a);
+    btnMenu.on("pointerup", () => {
+      this._cleanupJsonp();
+      this.scene.start("MainMenu");
     });
 
-    // drag (mobile)
-    this.input.on("pointerdown", (p) => {
+    // Layout updater (for orientation/resize, safe because no DOM input here)
+    const applyLayout = (w, h) => {
+      bg.setPosition(w / 2, h / 2);
+      const scaleBg = Math.max(w / bg.width, h / bg.height);
+      bg.setScale(scaleBg);
+
+      gg.clear();
+      gg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
+      gg.fillRect(0, Math.floor(h * 0.28), w, Math.ceil(h * 0.72));
+    };
+
+    applyLayout(W, H);
+    this._onResize = (gameSize) => applyLayout(gameSize.width, gameSize.height);
+    this.scale.on("resize", this._onResize);
+
+    // Scrolling: wheel + drag
+    this._onWheel = (pointer, gameObjects, dx, dy) => {
+      this._setScroll(this._scrollY + dy);
+    };
+    this.input.on("wheel", this._onWheel);
+
+    panel.setInteractive(new Phaser.Geom.Rectangle(panel.x - tableW / 2, panel.y - tableH / 2, tableW, tableH), Phaser.Geom.Rectangle.Contains);
+    panel.on("pointerdown", (p) => {
       this._dragging = true;
       this._dragStartY = p.y;
-      this._dragStartScroll = this._scrollY;
+      this._scrollStartY = this._scrollY;
     });
-    this.input.on("pointerup", () => { this._dragging = false; });
-    this.input.on("pointerout", () => { this._dragging = false; });
+    this.input.on("pointerup", () => (this._dragging = false));
     this.input.on("pointermove", (p) => {
       if (!this._dragging) return;
-      const dy = p.y - this._dragStartY;
-      this._scrollY = this._dragStartScroll + dy;
-      this.clampScroll();
-      this.applyScroll();
+      const delta = this._dragStartY - p.y;
+      this._setScroll(this._scrollStartY + delta);
     });
+
+    // Cleanup on shutdown/destroy
+    this.events.once("shutdown", this._cleanup, this);
+    this.events.once("destroy", this._cleanup, this);
+
+    // Load data
+    this._loadTop();
   }
 
-  scrollBy(delta) {
-    // positive delta scrolls down (content up)
-    this._scrollY -= delta * 0.35;
-    this.clampScroll();
-    this.applyScroll();
+  _cleanup() {
+    this._cleanupJsonp();
+    if (this.scale && this._onResize) this.scale.off("resize", this._onResize);
+    if (this.input && this._onWheel) this.input.off("wheel", this._onWheel);
   }
 
-  clampScroll() {
-    const minY = Math.min(0, (this._viewH - 36) - this._contentH);
-    if (this._scrollY < minY) this._scrollY = minY;
-    if (this._scrollY > 0) this._scrollY = 0;
+  _cleanupJsonp() {
+    try { if (this._jsonpCleanup) this._jsonpCleanup(); } catch (e) {}
+    this._jsonpCleanup = null;
+    if (this._jsonpTimeout) clearTimeout(this._jsonpTimeout);
+    this._jsonpTimeout = null;
   }
 
-  applyScroll() {
-    this._rowsCont.y = (this._viewY + 36) + this._scrollY;
-  }
+  _loadTop() {
+    this._cleanupJsonp();
 
-  async loadTop() {
-    this._status.setText("Ielādē rezultātu tabulu...");
-    this._status.setColor("#ffffff");
-    try {
-      const top = await this.jsonp(`${this.API_URL}?action=top`);
-      if (!Array.isArray(top)) throw new Error("bad response");
-      // Clean invalid rows
-      const clean = top.filter(r => {
-        const t = Number(r && r.time);
-        const name = (r && r.name != null) ? String(r.name).trim() : "";
-        return Number.isFinite(t) && t > 0 && name.length > 0;
-      }).map((r, i) => ({ rank: i+1, name: String(r.name), time: Number(r.time) }));
-      this._top = clean;
-      this._status.setText("");
-      this.buildRows();
-    } catch (e) {
-      this._top = [];
-      this._status.setText("Neizdevās ielādēt TOP (pārbaudi deploy).");
-      this._status.setColor("#ffb3b3");
-      this.buildRows();
+    if (this._statusText) {
+      this._statusText.setText("Ielādē rezultātu tabulu…").setVisible(true);
     }
-  }
 
-  buildRows() {
-    this._rowsCont.removeAll(true);
-    const rowH = 34;
-    const colRank = 14;
-    const colName = 90;
-    const colTime = this._viewW - 14;
+    const cbName = `__fsg_top_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
+    const url = `${this.API_URL}?action=top&callback=${cbName}`;
 
-    const normal = { fontFamily:"Arial", fontSize:"16px", color:"#ffffff" };
+    const script = document.createElement("script");
+    script.src = url;
+    script.async = true;
 
-    for (let i=0;i<this._top.length;i++) {
-      const r = this._top[i];
-      const y = i * rowH;
+    const cleanup = () => {
+      try { delete window[cbName]; } catch (e) {}
+      try { if (script && script.parentNode) script.parentNode.removeChild(script); } catch (e) {}
+    };
+    this._jsonpCleanup = cleanup;
 
-      // subtle stripe
-      if (i % 2 === 1) {
-        const bg = this.add.rectangle(this._viewW/2, y + rowH/2, this._viewW, rowH, 0x000000, 0.18);
-        bg.setOrigin(0.5);
-        this._rowsCont.add(bg);
+    window[cbName] = (data) => {
+      this._cleanupJsonp();
+      if (!Array.isArray(data)) {
+        this._showError();
+        return;
       }
+      this._top = data;
+      this._renderRows();
+      if (this._statusText) this._statusText.setVisible(false);
+    };
 
-      const tRank = this.add.text(colRank, y + 7, String(r.rank), normal).setOrigin(0,0);
-      const tName = this.add.text(colName, y + 7, r.name, normal).setOrigin(0,0);
-      const tTime = this.add.text(colTime, y + 7, this.formatTime(r.time), normal).setOrigin(1,0);
+    script.onerror = () => {
+      this._cleanupJsonp();
+      this._showError();
+    };
 
-      this._rowsCont.add([tRank, tName, tTime]);
-    }
+    document.body.appendChild(script);
 
-    this._contentH = this._top.length * rowH;
-    this._scrollY = 0;
-    this.applyScroll();
+    this._jsonpTimeout = setTimeout(() => {
+      this._cleanupJsonp();
+      this._showError();
+    }, 8000);
   }
 
-  formatTime(sec) {
-    const s = Math.max(0, Math.floor(sec));
+  _showError() {
+    if (this._statusText) {
+      this._statusText.setText("Neizdevās ielādēt TOP (pārbaudi deploy).").setVisible(true);
+    }
+  }
+
+  _formatTime(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
     const mm = String(Math.floor(s / 60)).padStart(2, "0");
     const ss = String(s % 60).padStart(2, "0");
     return `${mm}:${ss}`;
   }
 
-  jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const cb = `cb_${Date.now()}_${Math.floor(Math.random()*1e6)}`;
-      const script = document.createElement("script");
-      const cleanup = () => {
-        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
-        if (script.parentNode) script.parentNode.removeChild(script);
-      };
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error("timeout"));
-      }, 12000);
+    _renderRows() {
+    if (!this._content) return;
+    this._content.removeAll(true);
 
-      window[cb] = (data) => {
-        clearTimeout(timer);
-        cleanup();
-        resolve(data);
-      };
+    const W = this.scale.width;
+    const tableX = 28;
+    const tableW = W - 56;
+    const rowH = 28;
 
-      script.onerror = () => {
-        clearTimeout(timer);
-        cleanup();
-        reject(new Error("load error"));
-      };
+    const colRankX = tableX + 18;
+    const colNameX = tableX + 70;
+    const colTimeX = tableX + tableW - 18;
 
-      const sep = url.includes("?") ? "&" : "?";
-      script.src = `${url}${sep}callback=${cb}`;
-      document.body.appendChild(script);
-    });
+    const rowStyle = { fontFamily: "Arial", fontSize: "16px", color: "#ffffff" };
+
+    let y = 0;
+    for (let i = 0; i < this._top.length; i++) {
+      const r = this._top[i];
+      const rank = (r && r.rank) ? r.rank : (i + 1);
+      const name = (r && r.name) ? String(r.name) : "";
+      const time = this._formatTime(r && r.time);
+
+      // zebra row (subtle)
+      const zebraA = (i % 2 === 0) ? 0.06 : 0.0;
+      if (zebraA > 0) {
+        const bg = this.add.rectangle(W / 2, 0, tableW, rowH, 0xffffff, zebraA).setOrigin(0.5, 0);
+        bg.y = y - 2;
+        this._content.add(bg);
+      }
+
+      this._content.add(this.add.text(colRankX, y, String(rank), rowStyle).setOrigin(0, 0));
+      this._content.add(this.add.text(colNameX, y, name, rowStyle).setOrigin(0, 0));
+      this._content.add(this.add.text(colTimeX, y, time, rowStyle).setOrigin(1, 0));
+
+      y += rowH;
+    }
+
+    this._contentH = Math.max(0, y + 10);
+    this._setScroll(0);
   }
 
-  makeBigButton(x, y, label, color, colorOver) {
-    const w = Math.min(320, this.scale.width - 60);
-    const h = 54;
-    const bg = this.add.rectangle(x, y, w, h, color, 0.95).setOrigin(0.5);
+  _setScroll(newScroll) {
+    const H = this.scale.height;
+
+    const tableY = 150;
+    const tableH = H - 150 - 120;
+    const headerH = 36;
+    const viewH = tableH - headerH;
+
+    const maxScroll = Math.max(0, this._contentH - viewH);
+    this._scrollY = Phaser.Math.Clamp(newScroll, 0, maxScroll);
+
+    if (this._content) {
+      const contentTop = tableY + headerH + 10;
+      this._content.setPosition(0, contentTop - this._scrollY);
+    }
+  }
+
+
+  _makeButton(newScroll) {
+    // Content is inside masked area: we move container up/down
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    const tableY = 150;
+    const tableH = H - 150 - 120;
+    const headerH = 36;
+    const viewH = tableH - headerH;
+
+    const maxScroll = Math.max(0, this._contentH - viewH);
+    this._scrollY = Phaser.Math.Clamp(newScroll, 0, maxScroll);
+
+    if (this._content) {
+      const startY = tableY + headerH + 10;
+      this._content.y = -this._scrollY;
+      // content container anchored at y=0; rows start at startY, so move container relative to that
+      this._content.setPosition(0, -this._scrollY);
+    }
+  }
+
+  _makeButton(x, y, w, h, label, color, colorOver) {
+    const bg = this.add.rectangle(x, y, w, h, color, 1).setOrigin(0.5);
+    bg.setStrokeStyle(2, 0xffffff, 0.15);
+
     const txt = this.add.text(x, y, label, {
       fontFamily: "Arial",
       fontSize: "20px",
@@ -218,8 +305,8 @@ class Score extends Phaser.Scene {
 
     const hit = this.add.rectangle(x, y, w, h, 0x000000, 0).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    hit.on("pointerover", () => bg.setFillStyle(colorOver, 0.98));
-    hit.on("pointerout", () => bg.setFillStyle(color, 0.95));
+    hit.on("pointerover", () => bg.setFillStyle(colorOver, 1));
+    hit.on("pointerout", () => bg.setFillStyle(color, 1));
 
     return hit;
   }
