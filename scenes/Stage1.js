@@ -302,7 +302,9 @@ this.finished = false;
     this.createPortraitControls();
 
     // ---- EXIT poga pa vidu kontroles zonā ----
-    this.createExitButton();
+    this.createTopExitButton();
+
+    this.createMenuButton();
 
     // ---- Keyboard ----
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -531,7 +533,7 @@ this.finished = false;
     bindTap(btnDown, "down");
   }
 
-  createExitButton() {
+  createMenuButton() {
     const W = this.scale.width;
     const areaTop = this.playH;
     const areaH = this.controlsH;
@@ -542,13 +544,13 @@ this.finished = false;
     const R = 44;
 
     const btn = this.add
-      .circle(cx, cy, R, 0xb90f0f, 1)
+      .circle(cx, cy, R, 0x5a5a5a, 1)
       .setScrollFactor(0)
       .setDepth(this.DEPTH.controls + 3)
       .setInteractive({ useHandCursor: true });
 
     const label = this.add
-      .text(cx, cy, "EXIT", {
+      .text(cx, cy, "MENU", {
         fontFamily: "Arial",
         fontSize: "22px",
         color: "#ffffff",
@@ -559,23 +561,24 @@ this.finished = false;
       .setDepth(this.DEPTH.controls + 4);
 
     const pressIn = () => {
-      btn.setFillStyle(0xd61a1a, 1);
+      btn.setFillStyle(0x6a6a6a, 1);
       this.tweens.add({ targets: [btn, label], scaleX: 0.96, scaleY: 0.96, duration: 60 });
     };
 
     const pressOut = () => {
-      btn.setFillStyle(0xb90f0f, 1);
+      btn.setFillStyle(0x5a5a5a, 1);
       this.tweens.add({ targets: [btn, label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
     };
 
-    const doExit = () => {
-      this.gotoFinish("exit");
+    const doMenu = () => {
+      // return to main menu (no result screen)
+      this.scene.start("MainMenu");
     };
 
     btn.on("pointerdown", () => pressIn());
     btn.on("pointerup", () => {
       pressOut();
-      doExit();
+      doMenu();
     });
     btn.on("pointerout", () => pressOut());
     btn.on("pointercancel", () => pressOut());

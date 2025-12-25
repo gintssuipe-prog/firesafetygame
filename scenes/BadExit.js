@@ -34,7 +34,7 @@ class BadExit extends Phaser.Scene {
       .setStrokeStyle(2, 0x2a7a45, 1)
       .setInteractive({ useHandCursor: true });
 
-    const txt = this.add.text(W / 2, y, "UZ MENU", {
+    const txt = this.add.text(W / 2, y, "MENU", {
       fontFamily: "Arial",
       fontSize: "22px",
       color: "#ffffff",

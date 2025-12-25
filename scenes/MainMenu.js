@@ -38,6 +38,8 @@ class MainMenu extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor("#101a24");
 
+    this._addTopExitButton();
+
     const isDesktop = !!(this.sys.game.device && this.sys.game.device.os && this.sys.game.device.os.desktop);
 
     const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5);
@@ -98,6 +100,8 @@ class MainMenu extends Phaser.Scene {
 
     this._btnExitBg = btnExitBg;
     this._btnExitText = btnExitText;
+    btnExitBg.setVisible(false).disableInteractive();
+    btnExitText.setVisible(false);
 
     const pressInExit = () => {
       btnExitBg.setFillStyle(0x7a2020, 1);
@@ -293,11 +297,11 @@ class MainMenu extends Phaser.Scene {
       btnBg.setPosition(W / 2, btnY);
       btnText.setPosition(W / 2, btnY);
 
-      btnTopBg.setPosition(W / 2, btn2Y);
-      btnTopText.setPosition(W / 2, btn2Y);
+      btnTopBg.setPosition(W / 2, btn3Y);
+      btnTopText.setPosition(W / 2, btn3Y);
 
-      btnExitBg.setPosition(W / 2, btn3Y);
-      btnExitText.setPosition(W / 2, btn3Y);
+      btnExitBg.setVisible(false).disableInteractive();
+      btnExitText.setVisible(false);
 
 
       const btnTopEdge = btnY - btnH / 2;
@@ -404,6 +408,42 @@ class MainMenu extends Phaser.Scene {
       }
     } catch (e) {}
   }
+
+  _addTopExitButton() {
+    const pad = 10;
+    const w = 62;
+    const h = 28;
+    const x = pad + w / 2;
+    const y = pad + h / 2;
+
+    const bg = this.add.rectangle(x, y, w, h, 0xd10000, 1)
+      .setScrollFactor(0)
+      .setDepth(9999)
+      .setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(x, y, "EXIT", {
+      fontFamily: "Arial",
+      fontSize: "14px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
+
+    const pressIn = () => bg.setFillStyle(0xff1a1a, 1);
+    const pressOut = () => bg.setFillStyle(0xd10000, 1);
+
+    const doExit = () => {
+      try { window.close(); } catch (e) {}
+      setTimeout(() => {
+        try { this.scene.start("BadExit"); } catch (e) {}
+      }, 150);
+    };
+
+    bg.on("pointerdown", pressIn);
+    bg.on("pointerup", () => { pressOut(); doExit(); });
+    bg.on("pointerout", pressOut);
+    bg.on("pointercancel", pressOut);
+  }
+
 }
 
 window.MainMenu = MainMenu;

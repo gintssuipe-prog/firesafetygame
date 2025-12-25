@@ -33,6 +33,8 @@ class Score extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor("#101a24");
 
+    this._addTopExitButton();
+
     // Background like MainMenu/Finish
     const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5).setAlpha(0.12);
     const g = this.add.graphics();
@@ -79,11 +81,11 @@ class Score extends Phaser.Scene {
     // DOM table container (simple + robust on mobile)
     this._createDomTable();
 
-    // Bottom button: UZ MENU (grey, no frame)
+    // Bottom button: MENU (grey, no frame)
     const btnW = Math.min(260, W - 80);
     const btnH = 58;
     const btnY = H - 72;
-    const btnMenu = this._makeButton(W / 2, btnY, btnW, btnH, "UZ MENU", 0x5a5a5a, 0x6a6a6a);
+    const btnMenu = this._makeButton(W / 2, btnY, btnW, btnH, "MENU", 0x5a5a5a, 0x6a6a6a);
     btnMenu.on("pointerup", () => this.scene.start("MainMenu"));
 
     // Resize handler: keep everything adaptive
@@ -395,4 +397,40 @@ update() {
     bg.setLabel = (t) => txt.setText(t);
     return bg;
   }
+
+  _addTopExitButton() {
+    const pad = 10;
+    const w = 62;
+    const h = 28;
+    const x = pad + w / 2;
+    const y = pad + h / 2;
+
+    const bg = this.add.rectangle(x, y, w, h, 0xd10000, 1)
+      .setScrollFactor(0)
+      .setDepth(9999)
+      .setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(x, y, "EXIT", {
+      fontFamily: "Arial",
+      fontSize: "14px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
+
+    const pressIn = () => bg.setFillStyle(0xff1a1a, 1);
+    const pressOut = () => bg.setFillStyle(0xd10000, 1);
+
+    const doExit = () => {
+      try { window.close(); } catch (e) {}
+      setTimeout(() => {
+        try { this.scene.start("BadExit"); } catch (e) {}
+      }, 150);
+    };
+
+    bg.on("pointerdown", pressIn);
+    bg.on("pointerup", () => { pressOut(); doExit(); });
+    bg.on("pointerout", pressOut);
+    bg.on("pointercancel", pressOut);
+  }
+
 }
