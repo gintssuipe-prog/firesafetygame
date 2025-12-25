@@ -30,6 +30,7 @@ class Finish extends Phaser.Scene {
     this._qualifies = false;
     this._insertRank = null;
     this._pendingTimeSec = null;
+    this._saved = false;
 
     this._saved = false;
   }
@@ -51,6 +52,7 @@ class Finish extends Phaser.Scene {
     this._insertRank = null;
     this._pendingTimeSec = null;
 
+    this._saved = false;
     this.disableNameInput(); // remove old input, if any
   }
 
@@ -63,6 +65,9 @@ class Finish extends Phaser.Scene {
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
+
+    this._isMobile = !!(this.sys?.game?.device?.os?.android || this.sys?.game?.device?.os?.iOS);
+    this._inputFocused = false;
 
     // BG
     const bg = this.add.image(W / 2, H / 2, 'intro_bg').setAlpha(0.12);
@@ -153,15 +158,23 @@ class Finish extends Phaser.Scene {
     });
 
     // resize
-    this.scale.on('resize', () => {
+    this._onResize = () => {
+      // Mobilajā soft-keyboard / address-bar resize bieži izsauc “pārleciens” efektu.
+      // Ja vārda ievade ir fokusā, resize ignorējam.
+      if (this._isMobile && this._inputFocused) return;
+
       fitCover();
       this.layout();
       this.updateNameInputPosition();
-    });
+    };
+    if (!this._isMobile) {
+      this.scale.on('resize', this._onResize);
+    }
 
     this.events.once('shutdown', () => {
       this.disableNameInput();
-      this.scale.off('resize');
+      if (this._onResize) this.scale.off('resize', this._onResize);
+      this._onResize = null;
     });
 
     // initial layout + load
@@ -222,6 +235,8 @@ class Finish extends Phaser.Scene {
 
   async loadTop() {
     try {
+      this._status.setColor('#eaeaea');
+      this._status.setText('Ielādē rezultātu tabulu…');
       const top = await this.jsonp(`${this.API_URL}?action=top`);
       if (!Array.isArray(top)) throw new Error('bad response');
       // filter out invalid rows (e.g. 00:00 / empty) to avoid rank shift
@@ -394,7 +409,11 @@ class Finish extends Phaser.Scene {
     document.body.appendChild(input);
     this._nameInput = input;
 
-    // Keep save button enabled state sensible
+    // Keep save butt
+    // Focus tracking (mobilajā izmantojam, lai ignorētu soft-keyboard resize)
+    input.addEventListener('focus', () => { this._inputFocused = true; });
+    input.addEventListener('blur', () => { this._inputFocused = false; });
+// on enabled state sensible
     input.addEventListener('input', this._onNameInput = () => {
       if (this._saved) return;
       const ok = input.value.trim().length > 0;
@@ -409,6 +428,7 @@ class Finish extends Phaser.Scene {
 
   disableNameInput() {
     if (!this._nameInput) return;
+    this._inputFocused = false;
     try {
       if (this._onNameInput) this._nameInput.removeEventListener('input', this._onNameInput);
     } catch (e) {}
