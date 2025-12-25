@@ -43,9 +43,7 @@ class Score extends Phaser.Scene {
       bg.setScale(s);
 
       g.clear();
-      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.92, 0.92);
-      g.fillRect(0, Math.floor(h * 0.28), w, Math.ceil(h * 0.72));
-    };
+};
     applyBg(W, H);
 
     // Title
@@ -119,60 +117,74 @@ class Score extends Phaser.Scene {
     } catch (e) {}
     this._domWrap = null;
     this._domEl = null;
+
+    this._lastW = 0;
+    this._lastH = 0;
   }
 
   _createDomTable() {
-    // Wrapper div (scrollable)
-    const el = document.createElement("div");
-    el.style.overflowY = "auto";
-    el.style.overflowX = "hidden";
-    el.style.webkitOverflowScrolling = "touch";
-    el.style.background = "transparent";
-    // no background box
-    el.style.padding = "0";
-    el.style.color = "#fff";
-    el.style.fontFamily = "Arial, sans-serif";
-    el.style.fontSize = "16px";
-    el.style.lineHeight = "1.35";
-    el.style.boxSizing = "border-box";
+  // Scrollable wrapper (no background)
+  const el = document.createElement("div");
+  el.style.overflowY = "auto";
+  el.style.overflowX = "hidden";
+  el.style.webkitOverflowScrolling = "touch";
+  el.style.background = "transparent";
+  el.style.padding = "0";
+  el.style.margin = "0";
+  el.style.boxSizing = "border-box";
 
-    // Inner content
-    const inner = document.createElement("div");
-    inner.style.display = "flex";
-    inner.style.flexDirection = "column";
-    inner.style.gap = "6px";
+  // Make it look like a clean table, but still very compatible.
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+  table.style.tableLayout = "fixed";
+  table.style.fontFamily = "Arial, sans-serif";
+  table.style.fontSize = "16px";
+  table.style.lineHeight = "1.35";
+  table.style.color = "#ffffff";
 
-    // header row
-    const header = document.createElement("div");
-    header.style.display = "grid";
-    header.style.gridTemplateColumns = "54px 1fr 74px";
-    header.style.columnGap = "10px";
-    header.style.opacity = "0.95";
-    header.style.fontWeight = "bold";
-    header.style.borderBottom = "1px solid rgba(255,255,255,0.25)";
-    header.style.paddingBottom = "6px";
-    header.style.marginBottom = "6px";
-    header.innerHTML = `<div>Vieta</div><div>Vārds</div><div style="text-align:right;">Laiks</div>`;
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
 
-    inner.appendChild(header);
+  const thPos = document.createElement("th");
+  thPos.textContent = "Vieta";
+  thPos.style.width = "56px";
+  const thName = document.createElement("th");
+  thName.textContent = "Vārds";
+  const thTime = document.createElement("th");
+  thTime.textContent = "Laiks";
+  thTime.style.width = "76px";
 
-    const rows = document.createElement("div");
-    rows.id = "rows";
-    rows.style.display = "flex";
-    rows.style.flexDirection = "column";
-    rows.style.gap = "0";
-    inner.appendChild(rows);
-
-    el.appendChild(inner);
-
-    // Place as Phaser DOM element
-    this._domEl = el;
-    this._domWrap = this.add.dom(0, 0, el);
-    this._domWrap.setOrigin(0.5);
-
-    // Initial size/position
-    this._syncDomTable(this.scale.width, this.scale.height);
+  for (const th of [thPos, thName, thTime]) {
+    th.style.textAlign = "left";
+    th.style.fontWeight = "bold";
+    th.style.padding = "6px 6px";
+    th.style.opacity = "0.95";
+    th.style.borderBottom = "1px solid rgba(255,255,255,0.28)";
+    th.style.whiteSpace = "nowrap";
+    th.style.overflow = "hidden";
+    th.style.textOverflow = "ellipsis";
   }
+
+  trh.appendChild(thPos);
+  trh.appendChild(thName);
+  trh.appendChild(thTime);
+  thead.appendChild(trh);
+
+  const tbody = document.createElement("tbody");
+  tbody.id = "rows";
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  el.appendChild(table);
+
+  this._domEl = el;
+  this._domWrap = this.add.dom(0, 0, el);
+  this._domWrap.setOrigin(0.5);
+  this._domWrap.setScrollFactor(0);
+
+  this._syncDomTable(this.scale.width, this.scale.height);
+}
 
   _syncDomTable(W, H) {
     if (!this._domEl || !this._domWrap) return;
@@ -199,52 +211,70 @@ class Score extends Phaser.Scene {
   }
 
   _loadTop() {
-    this._cleanupJsonp();
+  // Two-step JSONP load:
+  // 1) try WITHOUT cache-buster (some browsers/privacy modes behave better)
+  // 2) if no response -> retry WITH cache-buster (fixes stale cache issues)
+  this._loadTopAttempt(false, 1);
+}
 
-    if (this._statusText) {
-      this._statusText.setText("Ielādē rezultātu tabulu…").setVisible(true);
-    }
-    if (this._hintText) this._hintText.setVisible(false);
+_loadTopAttempt(useCacheBuster, attemptNo) {
+  this._cleanupJsonp();
 
-    const cbName = `__fsg_top_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-    // Avoid cached JSONP responses (incognito vs normal mode issue)
-    const url = `${this.API_URL}?action=top&token=${encodeURIComponent(this.TOKEN)}&callback=${cbName}&_=${Date.now()}`;
+  if (this._statusText) {
+    const suffix = attemptNo === 2 ? " (2/2)" : "";
+    this._statusText.setText(`Ielādē rezultātu tabulu…${suffix}`).setVisible(true);
+  }
+  if (this._hintText) this._hintText.setVisible(false);
 
-    const script = document.createElement("script");
-    script.src = url;
-    script.async = true;
+  const cbName = `__fsg_top_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
 
-    const cleanup = () => {
-      try { delete window[cbName]; } catch (e) {}
-      try { if (script && script.parentNode) script.parentNode.removeChild(script); } catch (e) {}
-    };
-    this._jsonpCleanup = cleanup;
-
-    window[cbName] = (data) => {
-      this._cleanupJsonp();
-      if (!Array.isArray(data)) {
-        this._showError();
-        return;
-      }
-      this._top = data;
-      this._renderDomRows();
-      if (this._statusText) this._statusText.setVisible(false);
-      if (this._hintText) this._hintText.setVisible(true);
-    };
-
-    script.onerror = () => {
-      this._cleanupJsonp();
-      this._showError();
-    };
-
-    document.body.appendChild(script);
-
-    this._jsonpTimeout = setTimeout(() => {
-      this._cleanupJsonp();
-      this._showError();
-    }, 8000);
+  let url = `${this.API_URL}?action=top&token=${encodeURIComponent(this.TOKEN)}&callback=${cbName}`;
+  if (useCacheBuster) {
+    url += `&_=${Date.now()}`;
   }
 
+  const script = document.createElement("script");
+  script.src = url;
+  script.async = true;
+
+  const cleanup = () => {
+    try { delete window[cbName]; } catch (e) {}
+    try { script.remove(); } catch (e) {}
+  };
+
+  // Keep handle so we can clean on scene destroy
+  this._jsonpCleanup = cleanup;
+
+  window[cbName] = (payload) => {
+    this._cleanupJsonp();
+
+    if (!payload || payload.ok === false || !Array.isArray(payload.data)) {
+      // If first attempt fails, retry once with cache-buster
+      if (attemptNo === 1) return this._loadTopAttempt(true, 2);
+      return this._showError();
+    }
+
+    this._top = payload.data || [];
+    this._renderDomRows();
+    if (this._statusText) this._statusText.setVisible(false);
+    if (this._hintText) this._hintText.setVisible(true);
+  };
+
+  script.onerror = () => {
+    this._cleanupJsonp();
+    if (attemptNo === 1) return this._loadTopAttempt(true, 2);
+    this._showError();
+  };
+
+  document.body.appendChild(script);
+
+  // Timeout -> retry with cache-buster once
+  this._jsonpTimeout = setTimeout(() => {
+    this._cleanupJsonp();
+    if (attemptNo === 1) return this._loadTopAttempt(true, 2);
+    this._showError();
+  }, 8000);
+}
   _showError() {
     if (this._statusText) {
       this._statusText.setText("Neizdevās ielādēt TOP").setVisible(true);
@@ -273,48 +303,63 @@ class Score extends Phaser.Scene {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+_renderDomRows() {
+  if (!this._domEl) return;
+  const rows = this._domEl.querySelector("#rows");
+  if (!rows) return;
 
-  _renderDomRows() {
-    if (!this._domEl) return;
-    const rows = this._domEl.querySelector("#rows");
-    if (!rows) return;
+  rows.innerHTML = "";
 
-    rows.innerHTML = "";
+  for (let i = 0; i < Math.min(50, this._top.length); i++) {
+    const row = this._top[i] || {};
+    const rank = i + 1;
+    const name = this._escapeHtml(row.name);
+    const time = this._formatTime(row.timeSeconds);
 
-    for (let i = 0; i < Math.min(50, this._top.length); i++) {
-      const row = this._top[i] || {};
-      const rank = i + 1;
-      const name = this._escapeHtml(row.name);
-      const time = this._formatTime(row.timeSeconds);
+    const tr = document.createElement("tr");
 
-      const line = document.createElement("div");
-      line.style.display = "grid";
-      line.style.gridTemplateColumns = "54px 1fr 74px";
-      line.style.columnGap = "10px";
-      line.style.alignItems = "center";
+    const tdPos = document.createElement("td");
+    tdPos.textContent = String(rank);
 
-      const c1 = document.createElement("div");
-      c1.textContent = String(rank);
+    const tdName = document.createElement("td");
+    tdName.innerHTML = name; // already escaped
+    tdName.style.whiteSpace = "nowrap";
+    tdName.style.overflow = "hidden";
+    tdName.style.textOverflow = "ellipsis";
 
-      const c2 = document.createElement("div");
-      c2.textContent = name;
-      c2.style.whiteSpace = "nowrap";
-      c2.style.overflow = "hidden";
-      c2.style.textOverflow = "ellipsis";
+    const tdTime = document.createElement("td");
+    tdTime.textContent = time;
+    tdTime.style.textAlign = "right";
 
-      const c3 = document.createElement("div");
-      c3.textContent = time;
-      c3.style.textAlign = "right";
-      c3.style.opacity = "0.95";
-      c3.style.fontVariantNumeric = "tabular-nums";
-
-      line.appendChild(c1);
-      line.appendChild(c2);
-      line.appendChild(c3);
-
-      rows.appendChild(line);
+    for (const td of [tdPos, tdName, tdTime]) {
+      td.style.padding = "6px 6px";
+      td.style.borderBottom = "1px solid rgba(255,255,255,0.14)";
+      td.style.opacity = "0.95";
+      td.style.verticalAlign = "middle";
     }
+
+    tr.appendChild(tdPos);
+    tr.appendChild(tdName);
+    tr.appendChild(tdTime);
+    rows.appendChild(tr);
   }
+}
+
+
+
+update() {
+  // Some mobile browsers change viewport without firing Phaser resize reliably (address bar / keyboard).
+  // Keep DOM table synced with current canvas size.
+  const W = this.scale.width;
+  const H = this.scale.height;
+  if (this._lastW !== W || this._lastH !== H) {
+    this._lastW = W;
+    this._lastH = H;
+    this._syncDomTable(W, H);
+    if (this._statusText) this._statusText.setPosition(W / 2, 108);
+    if (this._hintText) this._hintText.setPosition(W / 2, 108);
+  }
+}
 
   _makeButton(x, y, w, h, label, color, colorOver) {
     const bg = this.add
