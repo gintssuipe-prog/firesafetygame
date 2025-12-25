@@ -14,7 +14,7 @@ class Finish extends Phaser.Scene {
     this._scrollY = 0;
     this._scrollMax = 0;
 
-    // reset per-run state (important for a new run)
+    // reset per-run state (important for RESTART -> play again)
     this._saved = false;
     this.disableNameInput();
 
@@ -106,10 +106,12 @@ class Finish extends Phaser.Scene {
     this._maskGfx.setVisible(false);
 
     // buttons
+    this._btnRestart = this.makeBigButton(0, 0, 'RESTART', 0x1f4a2c, 0x2a6a3b);
     this._btnExit = this.makeBigButton(0, 0, 'IZIET', 0x5a1e1e, 0x7a2a2a);
     this._btnSave = this.makeSmallButton(0, 0, 'Saglabāt', 0x1f3a52, 0x2a587c);
     this._btnSave.setEnabled(false);
 
+    this._btnRestart.onClick(() => {
       this.disableNameInput();
       this.scene.start('MainMenu');
     });
@@ -175,10 +177,16 @@ class Finish extends Phaser.Scene {
     this._sub.setPosition(W / 2, 110);
     this._status.setPosition(W / 2, 142);
 
-    // bottom button (only EXIT)
+    // bottom buttons
     const btnY = H - 64;
-    this._btnExit.setPosition(Math.round(W / 2), btnY);
-// panel area
+    const gap = 26;
+    const totalW = 200 * 2 + gap;
+    const leftX = Math.round(W / 2 - totalW / 2 + 100);
+    const rightX = leftX + 200 + gap;
+    this._btnRestart.setPosition(leftX, btnY);
+    this._btnExit.setPosition(rightX, btnY);
+
+    // panel area
     const panelW = Math.min(380, Math.max(300, W - 40));
     const panelX = Math.round((W - panelW) / 2);
     const panelTop = 168;
