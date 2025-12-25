@@ -13,6 +13,8 @@ class Finish extends Phaser.Scene {
     this._top = [];
     this._scrollY = 0;
     this._scrollMax = 0;
+
+    // reset per-run state (important for a new run)
     this._saved = false;
     this.disableNameInput();
 
@@ -105,6 +107,10 @@ class Finish extends Phaser.Scene {
 
     // buttons
     this._btnExit = this.makeBigButton(0, 0, 'IZIET', 0x5a1e1e, 0x7a2a2a);
+    this._btnSave = this.makeSmallButton(0, 0, 'Saglabāt', 0x1f3a52, 0x2a587c);
+    this._btnSave.setEnabled(false);
+
+      this.disableNameInput();
       this.scene.start('MainMenu');
     });
 
@@ -114,6 +120,11 @@ class Finish extends Phaser.Scene {
       try { this.game.destroy(true); } catch (e) {}
       try { window.location.href = 'about:blank'; } catch (e) {}
     });
+
+    this._btnSave.onClick(() => {
+      if (!this._qualifies) return;
+      if (this._saved) return;
+      this.submitScore();
     });
 
     // input + scroll handlers
@@ -164,11 +175,10 @@ class Finish extends Phaser.Scene {
     this._sub.setPosition(W / 2, 110);
     this._status.setPosition(W / 2, 142);
 
-    // bottom buttons
-    // single EXIT button (no restart)
-    const btnY = Math.round(H / 2);
+    // bottom button (only EXIT)
+    const btnY = H - 64;
     this._btnExit.setPosition(Math.round(W / 2), btnY);
-    // panel area
+// panel area
     const panelW = Math.min(380, Math.max(300, W - 40));
     const panelX = Math.round((W - panelW) / 2);
     const panelTop = 168;
@@ -188,6 +198,17 @@ class Finish extends Phaser.Scene {
     this._maskGfx.clear();
     this._maskGfx.fillStyle(0xffffff, 1);
     this._maskGfx.fillRect(this._bodyRect.x, this._bodyRect.y, this._bodyRect.w, this._bodyRect.h);
+
+    // place SAVE button into entry row (right side)
+    if (this._qualifies) {
+      const saveX = this._entryRect.x + this._entryRect.w - 14 - (128 / 2);
+      const saveY = this._entryRect.y + this._entryRect.h / 2;
+      this._btnSave.setPosition(saveX, saveY);
+      this._btnSave.setVisible(true);
+    } else {
+      this._btnSave.setVisible(false);
+    }
+
     this.applyScroll();
   }
 
@@ -238,7 +259,7 @@ class Finish extends Phaser.Scene {
       qualifies = (insertRank <= 50);
     }
 
-    this._qualifies = false;
+    this._qualifies = qualifies;
     this._insertRank = qualifies ? insertRank : null;
     this._pendingTimeSec = qualifies ? timeSec : null;
 
@@ -322,6 +343,7 @@ class Finish extends Phaser.Scene {
     const shouldHaveInput = this._qualifies && this.result.reason === 'success' && !this._saved;
     if (!shouldHaveInput) {
       this.disableNameInput();
+      this._btnSave.setEnabled(false);
       return;
     }
 
@@ -372,6 +394,8 @@ class Finish extends Phaser.Scene {
     });
 
     // Initial enable state
+    this._btnSave.setEnabled(false);
+
     this.updateNameInputPosition();
   }
 
@@ -446,12 +470,14 @@ class Finish extends Phaser.Scene {
 
     const name = input.value.trim().replace(/\s+/g, ' ').slice(0, 28);
     if (!name) {
+      this._btnSave.setEnabled(false);
       return;
     }
     const timeSec = this._pendingTimeSec;
     if (!Number.isFinite(timeSec) || timeSec <= 0) return;
 
     // Lock UI
+    this._btnSave.setEnabled(false);
     this._btnSave.setLabel('Saglabā...');
     input.disabled = true;
 
@@ -468,6 +494,8 @@ class Finish extends Phaser.Scene {
         // Remove input after save (critical UX)
         this.disableNameInput();
         this._btnSave.setLabel('Saglabāts ✓');
+        this._btnSave.setEnabled(false);
+
         // reload top so player appears
         await this.loadTop();
       } else {
