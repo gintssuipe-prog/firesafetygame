@@ -14,8 +14,12 @@ class Finish extends Phaser.Scene {
     this._scrollY = 0;
     this._scrollMax = 0;
 
-    // reset per-run state (important for RESTART -> play again)
+    // reset per-run state (important for a new run)
     this._saved = false;
+
+    this._keyboardActive = false;
+    this._lastResizeW = null;
+    this._lastResizeH = null;
     this.disableNameInput();
 
     // input (HTML element, not Phaser DOM)
@@ -30,9 +34,12 @@ class Finish extends Phaser.Scene {
     this._qualifies = false;
     this._insertRank = null;
     this._pendingTimeSec = null;
-    this._saved = false;
 
     this._saved = false;
+
+    this._keyboardActive = false;
+    this._lastResizeW = null;
+    this._lastResizeH = null;
   }
 
   init(data) {
@@ -52,7 +59,6 @@ class Finish extends Phaser.Scene {
     this._insertRank = null;
     this._pendingTimeSec = null;
 
-    this._saved = false;
     this.disableNameInput(); // remove old input, if any
   }
 
@@ -65,9 +71,6 @@ class Finish extends Phaser.Scene {
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
-
-    this._isMobile = !!(this.sys?.game?.device?.os?.android || this.sys?.game?.device?.os?.iOS);
-    this._inputFocused = false;
 
     // BG
     const bg = this.add.image(W / 2, H / 2, 'intro_bg').setAlpha(0.12);
@@ -111,10 +114,13 @@ class Finish extends Phaser.Scene {
     this._maskGfx.setVisible(false);
 
     // buttons
-    // RESTART poga izņemta (pagaidu risinājums)
     this._btnExit = this.makeBigButton(0, 0, 'IZIET', 0x5a1e1e, 0x7a2a2a);
     this._btnSave = this.makeSmallButton(0, 0, 'Saglabāt', 0x1f3a52, 0x2a587c);
     this._btnSave.setEnabled(false);
+
+      this.disableNameInput();
+      this.scene.start('MainMenu');
+    });
 
     this._btnExit.onClick(() => {
       this.disableNameInput();
@@ -153,23 +159,28 @@ class Finish extends Phaser.Scene {
     });
 
     // resize
-    this._onResize = () => {
-      // Mobilajā soft-keyboard / address-bar resize bieži izsauc “pārleciens” efektu.
-      // Ja vārda ievade ir fokusā, resize ignorējam.
-      if (this._isMobile && this._inputFocused) return;
+    this._lastResizeW = this.scale.width;
+    this._lastResizeH = this.scale.height;
+    this.scale.on('resize', () => {
+      // On many phones, opening the keyboard triggers a height-only "resize".
+      // We ignore those while the name input is focused to prevent layout jumping.
+      const nw = this.scale.width;
+      const nh = this.scale.height;
+      const dw = (this._lastResizeW == null) ? 0 : Math.abs(nw - this._lastResizeW);
+      const dh = (this._lastResizeH == null) ? 0 : Math.abs(nh - this._lastResizeH);
+      this._lastResizeW = nw;
+      this._lastResizeH = nh;
+
+      const keyboardLikely = this._keyboardActive && dw < 40 && dh > 40;
+      if (keyboardLikely) return;
 
       fitCover();
       this.layout();
       this.updateNameInputPosition();
-    };
-    if (!this._isMobile) {
-      this.scale.on('resize', this._onResize);
-    }
-
-    this.events.once('shutdown', () => {
+    });
+this.events.once('shutdown', () => {
       this.disableNameInput();
-      if (this._onResize) this.scale.off('resize', this._onResize);
-      this._onResize = null;
+      this.scale.off('resize');
     });
 
     // initial layout + load
@@ -185,12 +196,10 @@ class Finish extends Phaser.Scene {
     this._sub.setPosition(W / 2, 110);
     this._status.setPosition(W / 2, 142);
 
-    // bottom buttons
+    // bottom button (only EXIT)
     const btnY = H - 64;
-    // RESTART poga izņemta: atstājam tikai IZIET centrā
     this._btnExit.setPosition(Math.round(W / 2), btnY);
-
-    // panel area
+// panel area
     const panelW = Math.min(380, Math.max(300, W - 40));
     const panelX = Math.round((W - panelW) / 2);
     const panelTop = 168;
@@ -226,9 +235,14 @@ class Finish extends Phaser.Scene {
 
   async loadTop() {
     try {
-      this._status.setColor('#eaeaea');
-      this._status.setText('Ielādē rezultātu tabulu…');
-      const top = await this.jsonp(`${this.API_URL}?action=top`);
+      const baseUrl = `${this.API_URL}?action=top&token=${encodeURIComponent(this.TOKEN)}`;
+      let top;
+      try {
+        top = await this.jsonp(baseUrl);
+      } catch (e) {
+        // Second attempt with cache-buster (helps when a cached <script> blocks updates)
+        top = await this.jsonp(`${baseUrl}&_=${Date.now()}`);
+      }
       if (!Array.isArray(top)) throw new Error('bad response');
       // filter out invalid rows (e.g. 00:00 / empty) to avoid rank shift
       const clean = top.filter(r => {
@@ -400,15 +414,20 @@ class Finish extends Phaser.Scene {
     document.body.appendChild(input);
     this._nameInput = input;
 
-    // Keep save butt
-    // Focus tracking (mobilajā izmantojam, lai ignorētu soft-keyboard resize)
-    input.addEventListener('focus', () => { this._inputFocused = true; });
-    input.addEventListener('blur', () => { this._inputFocused = false; });
-// on enabled state sensible
+    // Keep save button enabled state sensible
     input.addEventListener('input', this._onNameInput = () => {
       if (this._saved) return;
       const ok = input.value.trim().length > 0;
       this._btnSave.setEnabled(ok);
+    });
+
+    // Prevent keyboard-triggered resize from moving UI around
+    input.addEventListener('focus', () => { this._keyboardActive = true; });
+    input.addEventListener('blur', () => {
+      this._keyboardActive = false;
+      // Re-apply layout once the keyboard is gone
+      this.layout();
+      this.updateNameInputPosition();
     });
 
     // Initial enable state
@@ -419,7 +438,6 @@ class Finish extends Phaser.Scene {
 
   disableNameInput() {
     if (!this._nameInput) return;
-    this._inputFocused = false;
     try {
       if (this._onNameInput) this._nameInput.removeEventListener('input', this._onNameInput);
     } catch (e) {}
