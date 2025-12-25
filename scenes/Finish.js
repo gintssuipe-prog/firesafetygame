@@ -206,26 +206,69 @@ class Finish extends Phaser.Scene {
     this.applyScroll();
   }
 
+  
   async loadTop() {
-    try {
-      const top = await this.jsonp(`${this.API_URL}?action=top`);
-      if (!Array.isArray(top)) throw new Error('bad response');
-      // filter out invalid rows (e.g. 00:00 / empty) to avoid rank shift
-      const clean = top.filter(r => {
-        const t = Number(r && r.time);
-        const name = (r && r.name != null) ? String(r.name).trim() : '';
-        return Number.isFinite(t) && t > 0 && name.length > 0;
-      }).map((r, i) => ({ ...r, rank: i + 1 }));
-      this._top = clean;
-      this._status.setText('');
-      this.buildTable();
-    } catch (e) {
-      this._status.setText('Neizdevās ielādēt TOP (pārbaudi deploy).');
-      this._status.setColor('#ffcccc');
-      this._top = [];
-      this.buildTable();
+    // Status: loading
+    this._status.setColor('#ffffff');
+    this._status.setText('Ielādē datus...');
+
+    const base = `https://script.google.com/macros/s/AKfycbyh6BcVY_CBPW9v7SNo1bNp_XttvhxpeSdYPfrTdRCD4KWXLeLvv-0S3p96PX0Dv5BnrA/exec?action=top&token=${encodeURIComponent(this.TOKEN)}`;
+    const attemptUrls = [
+      base,
+      base + `&_=${Date.now()}`
+    ];
+
+    let lastErr = null;
+
+    for (let i = 0; i < attemptUrls.length; i++) {
+      const url = attemptUrls[i];
+      try {
+        const top = await this.jsonp(url, 4500);
+        if (!Array.isArray(top)) {
+          const err = new Error('invalid');
+          err.code = 'invalid';
+          throw err;
+        }
+
+        // filter out invalid rows (e.g. 00:00 / empty) to avoid rank shift
+        const clean = top.filter(r => {
+          const t = Number(r && r.time);
+          const name = (r && r.name != null) ? String(r.name).trim() : '';
+          return Number.isFinite(t) && t > 0 && name.length > 0;
+        }).map((r, idx) => ({ ...r, rank: idx + 1 }));
+
+        this._top = clean;
+        this._status.setText('');
+        this._status.setColor('#ffffff');
+        this.buildTable();
+        return;
+      } catch (e) {
+        lastErr = e;
+        // if first attempt fails, try once more (cache/proxy)
+      }
+    }
+
+    // Failed after attempts -> show detailed status
+    const code = (lastErr && lastErr.code) ? lastErr.code : 'invalid';
+
+    this._top = [];
+    this.buildTable();
+
+    if (code === 'timeout') {
+      this._status.setColor('#ffdddd');
+      this._status.setText('Datu ielāde nokavēta...
+Rezultātu ielāde aizkavējās vai tika bloķēta.');
+    } else if (code === 'blocked') {
+      this._status.setColor('#ffdddd');
+      this._status.setText('Datu ielāde bloķēta
+Pārlūks neļāva ielādēt rezultātus.');
+    } else {
+      this._status.setColor('#ffdddd');
+      this._status.setText('Datu ielāde neizdevās
+Servera atbilde bija nederīga.');
     }
   }
+
 
   buildTable() {
     // clear previous table ui
@@ -507,28 +550,49 @@ class Finish extends Phaser.Scene {
     }
   }
 
-  jsonp(url) {
+  jsonp(url, timeoutMs = 4500) {
     return new Promise((resolve, reject) => {
       const cbName = 'cb_' + Math.random().toString(16).slice(2);
+      let settled = false;
+
       const cleanup = (script) => {
         try { delete window[cbName]; } catch (e) {}
-        try { script.remove(); } catch (e) {}
+        try { script && script.remove && script.remove(); } catch (e) {}
       };
 
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup(script);
+        const err = new Error('timeout');
+        err.code = 'timeout';
+        reject(err);
+      }, timeoutMs);
+
       window[cbName] = (data) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         cleanup(script);
         resolve(data);
       };
 
       const script = document.createElement('script');
       script.onerror = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         cleanup(script);
-        reject(new Error('load error'));
+        const err = new Error('blocked');
+        err.code = 'blocked';
+        reject(err);
       };
+
       script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
       document.body.appendChild(script);
     });
   }
+
 
   formatTime(sec) {
     if (!Number.isFinite(sec) || sec == null) return '--:--';
