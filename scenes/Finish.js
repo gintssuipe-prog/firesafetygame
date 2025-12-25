@@ -111,15 +111,10 @@ class Finish extends Phaser.Scene {
     this._maskGfx.setVisible(false);
 
     // buttons
-    this._btnRestart = this.makeBigButton(0, 0, 'RESTART', 0x1f4a2c, 0x2a6a3b);
+    // RESTART poga izņemta (pagaidu risinājums)
     this._btnExit = this.makeBigButton(0, 0, 'IZIET', 0x5a1e1e, 0x7a2a2a);
     this._btnSave = this.makeSmallButton(0, 0, 'Saglabāt', 0x1f3a52, 0x2a587c);
     this._btnSave.setEnabled(false);
-
-    this._btnRestart.onClick(() => {
-      this.disableNameInput();
-      this.scene.start('MainMenu');
-    });
 
     this._btnExit.onClick(() => {
       this.disableNameInput();
@@ -192,12 +187,8 @@ class Finish extends Phaser.Scene {
 
     // bottom buttons
     const btnY = H - 64;
-    const gap = 26;
-    const totalW = 200 * 2 + gap;
-    const leftX = Math.round(W / 2 - totalW / 2 + 100);
-    const rightX = leftX + 200 + gap;
-    this._btnRestart.setPosition(leftX, btnY);
-    this._btnExit.setPosition(rightX, btnY);
+    // RESTART poga izņemta: atstājam tikai IZIET centrā
+    this._btnExit.setPosition(Math.round(W / 2), btnY);
 
     // panel area
     const panelW = Math.min(380, Math.max(300, W - 40));
