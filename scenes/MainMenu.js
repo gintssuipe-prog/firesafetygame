@@ -8,10 +8,6 @@ class MainMenu extends Phaser.Scene {
 
     this._btnBg = null;
     this._btnText = null;
-    this._btnTopBg = null;
-    this._btnTopText = null;
-    this._btnExitBg = null;
-    this._btnExitText = null;
     this._bg = null;
     this._gg = null;
 
@@ -38,8 +34,6 @@ class MainMenu extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor("#101a24");
 
-    this._addTopExitButton();
-
     const isDesktop = !!(this.sys.game.device && this.sys.game.device.os && this.sys.game.device.os.desktop);
 
     const bg = this.add.image(0, 0, "intro_bg").setOrigin(0.5);
@@ -53,115 +47,29 @@ class MainMenu extends Phaser.Scene {
     const btnH = 58;
 
     const btnBg = this.add
-      .rectangle(0, 0, btnW, btnH, 0x184a30, 1)
+      .rectangle(0, 0, btnW, btnH, 0x1f3a52, 1)
       .setInteractive({ useHandCursor: true });
 
     const btnText = this.add
-      .text(0, 0, "SPĒLĒT SPĒLI", {
+      .text(0, 0, "UZ PRIEKŠU", {
         fontFamily: "Arial",
         fontSize: "22px",
         color: "#ffffff",
         fontStyle: "bold"
       })
       .setOrigin(0.5);
-
-    // ----- TOP 50 poga (uz Score scēnu) -----
-    const btn2W = btnW;
-    const btn2H = btnH;
-    const btnTopBg = this.add
-      .rectangle(0, 0, btn2W, btn2H, 0x1b3f57, 1)
-      .setInteractive({ useHandCursor: true });
-
-    const btnTopText = this.add
-      .text(0, 0, "TOP 50", {
-        fontFamily: "Arial",
-        fontSize: "22px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      })
-      .setOrigin(0.5);
-
-    this._btnTopBg = btnTopBg;
-    this._btnTopText = btnTopText;
-
-    // ----- IZIET NO SPĒLES poga -----
-    const btnExitBg = this.add
-      .rectangle(0, 0, btn2W, btn2H, 0x641818, 1)
-      .setInteractive({ useHandCursor: true });
-
-    const btnExitText = this.add
-      .text(0, 0, "IZIET NO SPĒLES", {
-        fontFamily: "Arial",
-        fontSize: "20px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      })
-      .setOrigin(0.5);
-
-    this._btnExitBg = btnExitBg;
-    this._btnExitText = btnExitText;
-    btnExitBg.setVisible(false).disableInteractive();
-    btnExitText.setVisible(false);
-
-    const pressInExit = () => {
-      btnExitBg.setFillStyle(0x7a2020, 1);
-      this.tweens.killTweensOf([btnExitBg, btnExitText]);
-      this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
-    };
-
-    const pressOutExit = () => {
-      btnExitBg.setFillStyle(0x641818, 1);
-      this.tweens.killTweensOf([btnExitBg, btnExitText]);
-      this.tweens.add({ targets: [btnExitBg, btnExitText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
-    };
-
-    const safeExit = () => {
-      try { window.close(); } catch (e) {}
-      // Browsers often block window.close() if the tab wasn't opened via window.open().
-      // Show an explicit screen instructing the user to close the tab.
-      setTimeout(() => {
-        try { this.scene.start("BadExit"); } catch (e) {}
-      }, 150);
-    };
-
-    btnExitBg.on("pointerdown", () => pressInExit());
-    btnExitBg.on("pointerup", () => { pressOutExit(); safeExit(); });
-    btnExitBg.on("pointerout", () => pressOutExit());
-    btnExitBg.on("pointercancel", () => pressOutExit());
-
-    const pressIn2 = () => {
-      btnTopBg.setFillStyle(0x24455f, 1);
-      this.tweens.killTweensOf([btnTopBg, btnTopText]);
-      this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
-    };
-
-    const pressOut2 = () => {
-      btnTopBg.setFillStyle(0x1b3f57, 1);
-      this.tweens.killTweensOf([btnTopBg, btnTopText]);
-      this.tweens.add({ targets: [btnTopBg, btnTopText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
-    };
-
-    const goTop = () => {
-      if (this._starting) return;
-      this.scene.start("Score");
-    };
-
-    btnTopBg.on("pointerdown", () => pressIn2());
-    btnTopBg.on("pointerup", () => { pressOut2(); goTop(); });
-    btnTopBg.on("pointerout", () => pressOut2());
-    btnTopBg.on("pointercancel", () => pressOut2());
 
     this._btnBg = btnBg;
     this._btnText = btnText;
 
     const pressIn = () => {
-      btnBg.setFillStyle(0x1f5a3a, 1);
+      btnBg.setFillStyle(0x2a587c, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 0.96, scaleY: 0.96, duration: 70 });
     };
 
     const pressOut = () => {
-      btnBg.setFillStyle(0x184a30, 1);
+      btnBg.setFillStyle(0x1f3a52, 1);
       this.tweens.killTweensOf([btnBg, btnText]);
       this.tweens.add({ targets: [btnBg, btnText], scaleX: 1.0, scaleY: 1.0, duration: 90 });
     };
@@ -265,11 +173,11 @@ class MainMenu extends Phaser.Scene {
     const warning = this.add
       .text(0, 0, "Visi spēles personāži, atribūti, loģika un lokācijas ir mākslinieka izdomājums!", {
         fontFamily: "Arial",
-          fontSize: "14px",
-          color: "#ff6666",
+        fontSize: "16px",
+        color: "#ff3b3b",
         align: "center"
       })
-      .setOrigin(0.5, 0).setAlpha(0.85)
+      .setOrigin(0.5, 0);
 
     this._contentItems = [title, subtitle, p1, p2, controlsTitle, ...ctrlKeyTexts, ...ctrlLabelTexts, warning];
     this._ctrlKeyTexts = ctrlKeyTexts;
@@ -288,26 +196,16 @@ class MainMenu extends Phaser.Scene {
       p2.setWordWrapWidth(W - 46, true);
       warning.setWordWrapWidth(W - 46, true);
 
-      // ✅ Pogas izvietojam NO APAČAS uz augšu, lai 3 pogas vienmēr paliek redzamas (īpaši mobilajā)
-      const bottomMargin = isDesktop ? 78 : 92;
-      const btn3Y = H - bottomMargin; // IZIET NO SPĒLES (apakšā)
-      const btn2Y = btn3Y - 74;      // TOP 50 (vidū)
-      const btnY  = btn2Y - 74;      // SPĒLĒT SPĒLI (augšā)
+      // ✅ pogas Y SALĀGOTS ar Intro (desktop: -165, mobilais: -150)
+      const hintY = H - (isDesktop ? 165 : 150);
+      const btnY = hintY + 75;
 
       btnBg.setPosition(W / 2, btnY);
       btnText.setPosition(W / 2, btnY);
 
-      btnTopBg.setPosition(W / 2, btn3Y);
-      btnTopText.setPosition(W / 2, btn3Y);
-
-      btnExitBg.setVisible(false).disableInteractive();
-      btnExitText.setVisible(false);
-
-
-      const btnTopEdge = btnY - btnH / 2;
-      // Sarkanais brīdinājums ir pašā augšā, tāpēc contentTop turam ļoti augstu.
-      const contentTop = isDesktop ? 22 : 16;
-      const contentBottomLimit = btnTopEdge - (isDesktop ? 26 : 18);
+      const btnTop = btnY - btnH / 2;
+      const contentTop = isDesktop ? 78 : 56;
+      const contentBottomLimit = btnTop - (isDesktop ? 26 : 18);
 
       const GAP_S = isDesktop ? 16 : 12;
       const GAP_M = isDesktop ? 26 : 18;
@@ -319,10 +217,6 @@ class MainMenu extends Phaser.Scene {
 
       const layoutOnce = () => {
         let y = contentTop;
-
-        // Brīdinājums pirms jebkāda cita konteksta (mazāks fonts nekā virsrakstam)
-        warning.setPosition(W / 2, y);
-        y += warning.height + GAP_M;
 
         title.setPosition(W / 2, y);
         y += title.height + GAP_M;
@@ -348,7 +242,10 @@ class MainMenu extends Phaser.Scene {
 
         const controlsBottom = y + ctrlRows.length * lineH;
 
-        const warningBottom = warning.y + warning.height;
+        const warningY = Math.round((controlsBottom + contentBottomLimit) / 2);
+        warning.setPosition(W / 2, warningY);
+
+        const warningBottom = warningY + warning.height;
         return Math.max(controlsBottom, warningBottom);
       };
 
@@ -391,59 +288,7 @@ class MainMenu extends Phaser.Scene {
         this._btnBg.disableInteractive();
       }
     } catch (e) {}
-
-    try {
-      if (this._btnTopBg && this._btnTopText) {
-        this.tweens.killTweensOf([this._btnTopBg, this._btnTopText]);
-        this._btnTopBg.removeAllListeners();
-        this._btnTopBg.disableInteractive();
-      }
-    } catch (e) {}
-
-    try {
-      if (this._btnExitBg && this._btnExitText) {
-        this.tweens.killTweensOf([this._btnExitBg, this._btnExitText]);
-        this._btnExitBg.removeAllListeners();
-        this._btnExitBg.disableInteractive();
-      }
-    } catch (e) {}
   }
-
-  _addTopExitButton() {
-    const pad = 10;
-    const w = 62;
-    const h = 28;
-    const x = pad + w / 2;
-    const y = pad + h / 2;
-
-    const bg = this.add.rectangle(x, y, w, h, 0xd10000, 1)
-      .setScrollFactor(0)
-      .setDepth(9999)
-      .setInteractive({ useHandCursor: true });
-
-    const txt = this.add.text(x, y, "EXIT", {
-      fontFamily: "Arial",
-      fontSize: "14px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
-
-    const pressIn = () => bg.setFillStyle(0xff1a1a, 1);
-    const pressOut = () => bg.setFillStyle(0xd10000, 1);
-
-    const doExit = () => {
-      try { window.close(); } catch (e) {}
-      setTimeout(() => {
-        try { this.scene.start("BadExit"); } catch (e) {}
-      }, 150);
-    };
-
-    bg.on("pointerdown", pressIn);
-    bg.on("pointerup", () => { pressOut(); doExit(); });
-    bg.on("pointerout", pressOut);
-    bg.on("pointercancel", pressOut);
-  }
-
 }
 
 window.MainMenu = MainMenu;

@@ -20,9 +20,7 @@ class Stage1 extends Phaser.Scene {
 
     this.facing = 1; // 1=pa labi, -1=pa kreisi
     this.startTimeMs = 0;
-    
-    this._timerStarted = false;
-this.finished = false;
+    this.finished = false;
     this.prevElevY = 0;
 
     // buss
@@ -89,12 +87,7 @@ this.finished = false;
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // start timer immediately on scene entry
-    this.startTimeMs = this.time.now;
-
-    
-    this._timerStarted = true;
-// ---- Layout: augšā spēles laukums, apakšā pogas ----
+    // ---- Layout: augšā spēles laukums, apakšā pogas ----
     this.controlsH = 190;
     this.playH = H - this.controlsH;
 
@@ -302,23 +295,16 @@ this.finished = false;
     this.createPortraitControls();
 
     // ---- EXIT poga pa vidu kontroles zonā ----
-    this.createTopExitButton();
-
-    this.createMenuButton();
+    this.createExitButton();
 
     // ---- Keyboard ----
     this.cursors = this.input.keyboard.createCursorKeys();
 
-    // startTimeMs already set at top of create
+    this.startTimeMs = this.time.now;
   }
 
   update(time, delta) {
     if (!this.finished) {
-      // Mobile safety: if Scene instance was kept alive, ensure timer starts when Stage1 actually begins
-      if (!this._timerStarted) {
-        this.startTimeMs = time;
-        this._timerStarted = true;
-      }
       const totalSec = Math.floor((time - this.startTimeMs) / 1000);
       const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
       const ss = String(totalSec % 60).padStart(2, "0");
@@ -533,7 +519,7 @@ this.finished = false;
     bindTap(btnDown, "down");
   }
 
-  createMenuButton() {
+  createExitButton() {
     const W = this.scale.width;
     const areaTop = this.playH;
     const areaH = this.controlsH;
@@ -544,13 +530,13 @@ this.finished = false;
     const R = 44;
 
     const btn = this.add
-      .circle(cx, cy, R, 0x5a5a5a, 1)
+      .circle(cx, cy, R, 0xb90f0f, 1)
       .setScrollFactor(0)
       .setDepth(this.DEPTH.controls + 3)
       .setInteractive({ useHandCursor: true });
 
     const label = this.add
-      .text(cx, cy, "MENU", {
+      .text(cx, cy, "EXIT", {
         fontFamily: "Arial",
         fontSize: "22px",
         color: "#ffffff",
@@ -561,24 +547,23 @@ this.finished = false;
       .setDepth(this.DEPTH.controls + 4);
 
     const pressIn = () => {
-      btn.setFillStyle(0x6a6a6a, 1);
+      btn.setFillStyle(0xd61a1a, 1);
       this.tweens.add({ targets: [btn, label], scaleX: 0.96, scaleY: 0.96, duration: 60 });
     };
 
     const pressOut = () => {
-      btn.setFillStyle(0x5a5a5a, 1);
+      btn.setFillStyle(0xb90f0f, 1);
       this.tweens.add({ targets: [btn, label], scaleX: 1.0, scaleY: 1.0, duration: 80 });
     };
 
-    const doMenu = () => {
-      // return to main menu (no result screen)
-      this.scene.start("MainMenu");
+    const doExit = () => {
+      this.gotoFinish("exit");
     };
 
     btn.on("pointerdown", () => pressIn());
     btn.on("pointerup", () => {
       pressOut();
-      doMenu();
+      doExit();
     });
     btn.on("pointerout", () => pressOut());
     btn.on("pointercancel", () => pressOut());
