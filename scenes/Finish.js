@@ -22,6 +22,11 @@ class Finish extends Phaser.Scene {
     this._nameInput = null;
     this._nameInputEnabled = false;
 
+    // Mobile keyboard resize lock (prevent canvas/layout shrink while typing)
+    this._keyboardLock = false;
+    this._lastScaleW = null;
+    this._lastScaleH = null;
+
     // computed layout rects (game coords)
     this._entryRect = null;
     this._headerRect = null;
@@ -147,6 +152,20 @@ class Finish extends Phaser.Scene {
 
     // resize
     this.scale.on('resize', () => {
+      const newW = this.scale.width;
+      const newH = this.scale.height;
+
+      // On some Android browsers the on-screen keyboard triggers a height-only resize.
+      // We keep the layout stable while the name input is focused.
+      if (this._keyboardLock && this._lastScaleW === newW && this._lastScaleH !== null && this._lastScaleH !== newH) {
+        // still update input position in case the browser moved the visual viewport
+        this.updateNameInputPosition();
+        return;
+      }
+
+      this._lastScaleW = newW;
+      this._lastScaleH = newH;
+
       fitCover();
       this.layout();
       this.updateNameInputPosition();
@@ -159,6 +178,8 @@ class Finish extends Phaser.Scene {
 
     // initial layout + load
     this.layout();
+    this._lastScaleW = this.scale.width;
+    this._lastScaleH = this.scale.height;
     this.loadTop();
   }
 
@@ -417,15 +438,45 @@ class Finish extends Phaser.Scene {
     input.style.boxSizing = 'border-box';
     input.style.pointerEvents = 'auto';
 
+    // Name constraints
+    input.maxLength = 20;
+    input.setAttribute('maxlength', '20');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'none');
+    input.setAttribute('spellcheck', 'false');
+
     document.body.appendChild(input);
     this._nameInput = input;
 
     // Keep save button enabled state sensible
     input.addEventListener('input', this._onNameInput = () => {
       if (this._saved) return;
-      const ok = input.value.trim().length > 0;
+
+      // Enforce: max 20 symbols, no spaces
+      const before = input.value;
+      let v = before.replace(/\s+/g, '');
+      if (v.length > 20) v = v.slice(0, 20);
+      if (v !== before) input.value = v;
+
+      const ok = v.length > 0;
       this._btnSave.setEnabled(ok);
     });
+    // Keyboard focus: prevent layout resize jump on some Android browsers
+    input.addEventListener('focus', () => {
+      this._keyboardLock = true;
+      this._lastScaleW = this.scale.width;
+      this._lastScaleH = this.scale.height;
+    });
+    input.addEventListener('blur', () => {
+      this._keyboardLock = false;
+      this._lastScaleW = this.scale.width;
+      this._lastScaleH = this.scale.height;
+      // Re-layout once after keyboard closes
+      this.layout();
+      this.updateNameInputPosition();
+    });
+
 
     // Initial enable state
     this._btnSave.setEnabled(false);
