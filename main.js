@@ -1,3 +1,4 @@
+console.log(`FireSafetyGame ${window.GAME_VERSION || ""} ${window.GAME_BUILD || ""}`.trim());
 const config = {
   type: Phaser.AUTO,
   width: 420,
